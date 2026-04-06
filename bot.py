@@ -45,8 +45,18 @@ def home():
 def webhook():
     global bot_app
 
+@app.route(f"/webhook/{TOKEN}", methods=["POST"])
+def webhook():
+    global bot_app
+
     if bot_app is None:
-        return "Bot ainda iniciando", 503
+        return "ok", 200  # <-- NÃO pode retornar erro
+
+    data = request.get_json(force=True)
+    update = Update.de_json(data, bot_app.bot)
+    bot_app.update_queue.put_nowait(update)
+
+    return "ok", 200
 
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
