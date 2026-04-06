@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
 # =============================
-# LOOP GLOBAL (FIX DO ERRO)
+# LOOP GLOBAL (CORRETO)
 # =============================
 
 loop = asyncio.new_event_loop()
@@ -68,7 +68,7 @@ def liberar_vip(user_id, dias):
     salvar_vip(usuarios_vip)
 
 # =============================
-# PAGAMENTO
+# PAGAMENTO MERCADO PAGO
 # =============================
 
 def criar_pagamento(user_id, plano):
@@ -123,12 +123,10 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # PREVIA (FOTO)
     if query.data == "previa":
         with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
             await query.message.reply_photo(photo=foto, caption="👀 Prévia...")
 
-    # VIP (VIDEO)
     elif query.data == "vip":
         if is_vip(user_id):
             try:
@@ -140,7 +138,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.message.reply_text("🔒 Compre um plano para acessar")
 
-    # PLANOS
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
         await query.message.reply_text(f"💰 Pague aqui:\n{link}")
@@ -149,7 +146,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK TELEGRAM
+# WEBHOOK TELEGRAM (SEM ERRO)
 # =============================
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
@@ -208,19 +205,26 @@ def home():
     return "BOT ONLINE", 200
 
 # =============================
-# START BOT (UMA VEZ)
+# INICIALIZAÇÃO CORRETA
 # =============================
 
-loop.run_until_complete(bot_app.initialize())
+@app.before_request
+def init_bot():
+    if not hasattr(bot_app, "initialized"):
+        loop.create_task(bot_app.initialize())
+        bot_app.initialized = True
 
 # =============================
 # SET WEBHOOK
 # =============================
 
 def set_webhook():
-    requests.get(
-        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
-    )
+    try:
+        requests.get(
+            f"https://api.telegram.org/bot{TOKEN}/setWebhook",
+            params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
+        )
+    except Exception as e:
+        print("Erro webhook:", e)
 
 set_webhook()
