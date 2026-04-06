@@ -10,7 +10,7 @@ import os
 # CONFIG
 # =============================
 
-TOKEN = "SEU_TOKEN_AQUI"  # TROCA ISSO DEPOIS
+TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
 
@@ -19,11 +19,10 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 
 usuarios_vip = set()
 
-# caminho base (ESSENCIAL PRO RENDER)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # =============================
-# START
+# HANDLERS
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -34,22 +33,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     try:
-        caminho_foto = os.path.join(BASE_DIR, "foto1.jpg")
-
-        with open(caminho_foto, "rb") as foto:
+        with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
             await update.message.reply_photo(
                 photo=foto,
                 caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
-
     except Exception as e:
-        print("ERRO FOTO START:", e)
-        await update.message.reply_text("Erro ao carregar mídia 😢")
-
-# =============================
-# BOTÕES
-# =============================
+        print("ERRO FOTO:", e)
+        await update.message.reply_text("Erro ao carregar imagem")
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -59,23 +51,18 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "previa":
         try:
-            caminho_video = os.path.join(BASE_DIR, "video1.mp4")
-
-            with open(caminho_video, "rb") as video:
+            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
                 await query.message.reply_video(
                     video=video,
                     caption="👀 Só uma prévia...\nO resto é VIP 😈"
                 )
-
         except Exception as e:
             print("ERRO VIDEO:", e)
-            await query.message.reply_text("Erro ao carregar vídeo 😢")
+            await query.message.reply_text("Erro ao carregar vídeo")
 
     elif query.data == "vip":
         try:
-            caminho_foto2 = os.path.join(BASE_DIR, "foto2.jpg")
-
-            with open(caminho_foto2, "rb") as foto:
+            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
                 if user_id in usuarios_vip:
                     await query.message.reply_photo(
                         photo=foto,
@@ -86,14 +73,9 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         photo=foto,
                         caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
                     )
-
         except Exception as e:
             print("ERRO FOTO VIP:", e)
-            await query.message.reply_text("Erro ao carregar conteúdo 😢")
-
-# =============================
-# HANDLERS
-# =============================
+            await query.message.reply_text("Erro ao carregar conteúdo")
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
@@ -130,7 +112,7 @@ def set_webhook():
 
     try:
         r = requests.get(url, params={"url": webhook_url})
-        print("Webhook setado:", r.text)
+        print("Webhook:", r.text)
     except Exception as e:
         print("Erro webhook:", e)
 
