@@ -4,7 +4,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 import asyncio
 import requests
-import threading
 
 # =============================
 # CONFIG
@@ -30,15 +29,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    try:
-        with open("foto1.jpg", "rb") as foto:
-            await update.message.reply_photo(
-                photo=foto,
-                caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-    except:
-        await update.message.reply_text("Erro ao carregar mídia.")
+    await update.message.reply_text(
+        "😈 Oi amor...\n\nQuer ver tudo? 👇",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 # =============================
 # BOTÕES
@@ -51,30 +45,13 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "previa":
-        try:
-            with open("video1.mp4", "rb") as video:
-                await query.message.reply_video(
-                    video=video,
-                    caption="👀 Só uma prévia...\nO resto é VIP 😈"
-                )
-        except:
-            await query.message.reply_text("Erro ao enviar vídeo.")
+        await query.message.reply_text("👀 Só uma prévia...\nO resto é VIP 😈")
 
     elif query.data == "vip":
-        try:
-            with open("foto2.jpg", "rb") as foto:
-                if user_id in usuarios_vip:
-                    await query.message.reply_photo(
-                        photo=foto,
-                        caption="🔥 VIP liberado 😈"
-                    )
-                else:
-                    await query.message.reply_photo(
-                        photo=foto,
-                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
-                    )
-        except:
-            await query.message.reply_text("Erro ao carregar conteúdo.")
+        if user_id in usuarios_vip:
+            await query.message.reply_text("🔥 VIP liberado 😈")
+        else:
+            await query.message.reply_text("🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈")
 
 # =============================
 # HANDLERS
@@ -84,7 +61,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK
+# WEBHOOK CORRETO
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -94,39 +71,26 @@ def home():
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
-    try:
-        update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    data = request.get_json(force=True)
 
-        asyncio.run(bot_app.process_update(update))
+    update = Update.de_json(data, bot_app.bot)
 
-        return "ok", 200
-
-    except Exception as e:
-        print("ERRO:", e)
-        return "error", 500
-
-# =============================
-# INICIAR BOT (THREAD SAFE)
-# =============================
-
-def start_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    async def setup():
+    async def process():
         await bot_app.initialize()
-        await bot_app.start()
+        await bot_app.process_update(update)
 
-        webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
+    asyncio.run(process())
 
-        requests.get(
-            f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-            params={"url": webhook_url}
-        )
+    return "ok", 200
 
-        print("Webhook configurado!")
+# =============================
+# SETAR WEBHOOK AO INICIAR
+# =============================
 
-    loop.run_until_complete(setup())
+@app.before_first_request
+def set_webhook():
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+    webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-# inicia em thread separada (ESSENCIAL)
-threading.Thread(target=start_bot).start()
+    r = requests.get(url, params={"url": webhook_url})
+    print("Webhook setado:", r.text)
