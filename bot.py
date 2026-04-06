@@ -1,5 +1,6 @@
 import os
 import threading
+import requests
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -8,10 +9,11 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # CONFIG
 # =============================
 
-TOKEN = TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
-PUBLIC_URL = PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
+TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
+PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 
 app = Flask(__name__)
+bot_app = None
 
 # =============================
 # TELEGRAM BOT
@@ -36,14 +38,18 @@ def home():
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
+    global bot_app
+
+    if bot_app is None:
+        return "Bot ainda iniciando", 503
+
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
     bot_app.update_queue.put_nowait(update)
+
     return "ok", 200
 
 def iniciar_webhook():
-    import requests
-
     print("🌐 Configurando webhook...")
 
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
@@ -56,7 +62,7 @@ def iniciar_webhook():
     app.run(host="0.0.0.0", port=port)
 
 # =============================
-# START APP (IMPORTANTE)
+# START APP
 # =============================
 
 if __name__ == "__main__":
