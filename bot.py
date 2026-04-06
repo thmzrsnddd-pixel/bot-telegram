@@ -25,23 +25,39 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # HANDLERS
 # =============================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("👀 Ver prévia 👀", callback_data="previa")],
-        [InlineKeyboardButton("🔒 Conteúdo VIP 🔒", callback_data="vip")],
-        [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
-    ]
+async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-    try:
-        with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
-            await update.message.reply_photo(
-                photo=foto,
-                caption="😈 Oi amor...sua garotinha esta aqui 🔥 \n\n Conteudo exclusivo  👇",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-    except Exception as e:
-        print("ERRO FOTO:", e)
-        await update.message.reply_text("Erro ao carregar imagem")
+    user_id = query.from_user.id
+
+    if query.data == "previa":
+        try:
+            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+                await query.message.reply_video(
+                    video=video,
+                    caption="👀 Só uma prévia...\nO resto é VIP 😈"
+                )
+        except Exception as e:
+            print("ERRO VIDEO:", e)
+            await query.message.reply_text("Erro ao carregar vídeo")
+
+    elif query.data == "vip":
+        try:
+            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
+                if user_id in usuarios_vip:
+                    await query.message.reply_photo(
+                        photo=foto,
+                        caption="🔥 VIP liberado 😈"
+                    )
+                else:
+                    await query.message.reply_photo(
+                        photo=foto,
+                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈"
+                    )
+        except Exception as e:
+            print("ERRO FOTO VIP:", e)
+            await query.message.reply_text("Erro ao carregar conteúdo")
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
