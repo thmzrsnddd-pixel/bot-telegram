@@ -19,7 +19,7 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 usuarios_vip = set()
 
 # =============================
-# START (BOAS-VINDAS + FOTO)
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -83,41 +83,32 @@ def home():
 
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-
-    asyncio.get_event_loop().create_task(
-        bot_app.process_update(update)
-    )
-
+async def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, bot_app.bot)
+    await bot_app.process_update(update)
     return "ok", 200
 
 # =============================
-# INICIAR BOT
+# INICIAR
 # =============================
 
-async def iniciar_bot():
-    print("🚀 Bot iniciando...")
-
+async def setup():
     await bot_app.initialize()
     await bot_app.start()
 
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    r = requests.get(url, params={"url": webhook_url})
-    print("Webhook:", r.text)
+    requests.get(url, params={"url": webhook_url})
+    print("✅ Webhook configurado")
+
+# roda setup uma vez
+asyncio.get_event_loop().run_until_complete(setup())
 
 # =============================
-# START APP
+# FLASK
 # =============================
 
 if __name__ == "__main__":
-    import threading
-
-    def start_bot():
-        asyncio.run(iniciar_bot())
-
-    threading.Thread(target=start_bot).start()
-
     app.run(host="0.0.0.0", port=10000)
