@@ -112,8 +112,10 @@ async def iniciar_bot():
 # =============================
 
 if __name__ == "__main__":
-    import threading
+    import asyncio
 
-    threading.Thread(target=lambda: asyncio.run(iniciar_bot())).start()
+    # 🔥 roda o bot ANTES de iniciar o servidor
+    asyncio.run(iniciar_bot())
 
+    # depois sobe o flask
     app.run(host="0.0.0.0", port=10000)
