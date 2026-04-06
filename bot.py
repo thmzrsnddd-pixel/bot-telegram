@@ -53,35 +53,34 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # PREVIA = VIDEO
+    # 👀 PRÉVIA = FOTO
     if query.data == "previa":
         try:
-            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
-                await query.message.reply_video(
-                    video=video,
+            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
+                await query.message.reply_photo(
+                    photo=foto,
                     caption="👀 Só uma prévia...\nO resto é VIP 😈"
                 )
         except Exception as e:
-            print("ERRO VIDEO:", e)
-            await query.message.reply_text("Erro ao carregar vídeo")
+            print("ERRO PREVIA FOTO:", e)
+            await query.message.reply_text("Erro ao carregar prévia")
 
-    # VIP = FOTO
+    # 🔒 VIP = VÍDEO
     elif query.data == "vip":
         try:
-            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
-                if user_id in usuarios_vip:
-                    await query.message.reply_photo(
-                        photo=foto,
+            if user_id in usuarios_vip:
+                with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+                    await query.message.reply_video(
+                        video=video,
                         caption="🔥 VIP liberado 😈"
                     )
-                else:
-                    await query.message.reply_photo(
-                        photo=foto,
-                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈"
-                    )
+            else:
+                await query.message.reply_text(
+                    "🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈"
+                )
         except Exception as e:
-            print("ERRO FOTO VIP:", e)
-            await query.message.reply_text("Erro ao carregar conteúdo")
+            print("ERRO VIDEO VIP:", e)
+            await query.message.reply_text("Erro ao carregar conteúdo VIP")
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
