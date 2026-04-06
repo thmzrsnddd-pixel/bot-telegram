@@ -1,6 +1,7 @@
+
 from flask import Flask, request
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 import asyncio
 import requests
@@ -12,21 +13,72 @@ import requests
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 
+LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
+
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
+# controle simples (depois podemos melhorar)
+usuarios_vip = set()
+
 # =============================
-# COMANDO
+# START (BOAS-VINDAS)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 /start recebido")
-    await update.message.reply_text("🔥 Bot funcionando!")
+    keyboard = [
+        [InlineKeyboardButton("👀 Ver prévia", callback_data="previa")],
+        [InlineKeyboardButton("🔒 Conteúdo VIP", callback_data="vip")],
+        [InlineKeyboardButton("💸 Comprar acesso", url=LINK_PAGAMENTO)]
+    ]
 
-bot_app.add_handler(CommandHandler("start", start))
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_photo(
+        photo="https://i.imgur.com/SEU_LINK.jpg",  # 👈 FOTO AQUI
+        caption="🔥 Bem-vindo...\n\nConteúdo exclusivo te espera 😈👇",
+        reply_markup=reply_markup
+    )
 
 # =============================
-# ROTAS
+# BOTÕES
+# =============================
+
+async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    # 👀 PRÉVIA
+    if query.data == "previa":
+        await query.message.reply_photo(
+            photo="https://i.imgur.com/SEU_PREVIEW.jpg",  # 👈 PREVIA
+            caption="👀 Só uma prévia...\n\nO resto é VIP 😈"
+        )
+
+    # 🔒 VIP
+    elif query.data == "vip":
+        if user_id in usuarios_vip:
+            await query.message.reply_video(
+                video="https://SEU_VIDEO.mp4",  # 👈 VIDEO VIP
+                caption="🔥 Conteúdo VIP liberado 😈"
+            )
+        else:
+            await query.message.reply_text(
+                "🔒 Conteúdo VIP bloqueado!\n\n"
+                "💸 Compre o acesso para liberar tudo 😈"
+            )
+
+# =============================
+# HANDLERS
+# =============================
+
+bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(CallbackQueryHandler(botoes))
+
+# =============================
+# WEBHOOK
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -40,7 +92,6 @@ def webhook():
 
     update = Update.de_json(data, bot_app.bot)
 
-    # executa async dentro do Flask corretamente
     asyncio.run(bot_app.process_update(update))
 
     return "ok", 200
@@ -50,18 +101,16 @@ def webhook():
 # =============================
 
 async def iniciar_bot():
-    print("🚀 Iniciando bot...")
+    print("🚀 Bot iniciando...")
 
     await bot_app.initialize()
     await bot_app.start()
 
-    # configurar webhook
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
     r = requests.get(url, params={"url": webhook_url})
     print("Webhook:", r.text)
-
 
 # =============================
 # START APP
@@ -70,8 +119,6 @@ async def iniciar_bot():
 if __name__ == "__main__":
     import threading
 
-    # inicia o bot em paralelo
     threading.Thread(target=lambda: asyncio.run(iniciar_bot())).start()
 
-    # inicia servidor web (Render usa porta 10000)
     app.run(host="0.0.0.0", port=10000)
