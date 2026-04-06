@@ -45,9 +45,8 @@ def home():
 def webhook():
     global bot_app
 
-    if bot_app is None:
-        return "Bot iniciando", 503
-
+if bot_app is None:
+    return "ok", 200
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
 
