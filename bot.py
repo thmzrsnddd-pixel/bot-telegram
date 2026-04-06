@@ -17,7 +17,6 @@ app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 usuarios_vip = set()
-iniciado = False
 
 # =============================
 # START
@@ -75,7 +74,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK
+# WEBHOOK (100% COMPATÍVEL)
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -100,7 +99,7 @@ def webhook():
         return "error", 500
 
 # =============================
-# SETUP BOT
+# INICIALIZAÇÃO (SEM ERRO)
 # =============================
 
 async def setup():
@@ -113,21 +112,10 @@ async def setup():
     r = requests.get(url, params={"url": webhook_url})
     print("Webhook:", r.text)
 
-# =============================
-# INICIALIZAÇÃO SEGURA
-# =============================
-
-@app.before_first_request
-def iniciar():
-    global iniciado
-    if iniciado:
-        return
-
-    iniciado = True
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(setup())
+# roda direto (compatível com gunicorn)
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+loop.run_until_complete(setup())
 
 # =============================
 # FIM
