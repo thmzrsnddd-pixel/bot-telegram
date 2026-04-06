@@ -19,7 +19,7 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 usuarios_vip = set()
 
 # =============================
-# START (BOAS-VINDAS + FOTO)
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -46,14 +46,12 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # 👀 PRÉVIA (VÍDEO)
     if query.data == "previa":
         await query.message.reply_video(
             video=open("video1.mp4", "rb"),
             caption="👀 Só uma prévia...\nO resto é VIP 😈"
         )
 
-    # 🔒 VIP (FOTO + BLOQUEIO)
     elif query.data == "vip":
         if user_id in usuarios_vip:
             await query.message.reply_photo(
@@ -63,7 +61,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.message.reply_photo(
                 photo=open("foto2.jpg", "rb"),
-                caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora e acessa tudo 😈"
+                caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
             )
 
 # =============================
@@ -87,7 +85,11 @@ def webhook():
     data = request.get_json(force=True)
 
     update = Update.de_json(data, bot_app.bot)
-    asyncio.run(bot_app.process_update(update))
+
+    # 🔥 CORREÇÃO AQUI
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(bot_app.process_update(update))
 
     return "ok", 200
 
