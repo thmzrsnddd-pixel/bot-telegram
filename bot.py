@@ -36,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
             await update.message.reply_photo(
                 photo=foto,
-                caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
+                caption="😈 Oi amor...Aqui tem tudo que deseja \n\n?Conteudo exclusivo 👇",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
     except Exception as e:
@@ -51,7 +51,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "previa":
         try:
-            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as video:
                 await query.message.reply_video(
                     video=video,
                     caption="👀 Só uma prévia...\nO resto é VIP 😈"
@@ -62,7 +62,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "vip":
         try:
-            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
+            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as foto:
                 if user_id in usuarios_vip:
                     await query.message.reply_photo(
                         photo=foto,
