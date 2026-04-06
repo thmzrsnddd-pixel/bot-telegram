@@ -1,51 +1,79 @@
-import os
-import asyncio
+import threading
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+# =============================
+# CONFIG
+# =============================
 
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 
 app = Flask(__name__)
+bot_app = None
 
-# ================= BOT =================
-
-bot_app = ApplicationBuilder().token(TOKEN).build()
+# =============================
+# TELEGRAM BOT
+# =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📩 Comando /start recebido")
     await update.message.reply_text("🔥 Bot funcionando!")
 
-bot_app.add_handler(CommandHandler("start", start))
+def iniciar_bot():
+    global bot_app
 
-# ================= WEBHOOK =================
+    bot_app = ApplicationBuilder().token(TOKEN).build()
+    bot_app.add_handler(CommandHandler("start", start))
+
+    print("🤖 Bot iniciado!")
+
+    # 🔥 ISSO AQUI É O MAIS IMPORTANTE
+    bot_app.initialize()
+    bot_app.start()
+
+# =============================
+# WEBHOOK
+# =============================
 
 @app.route("/", methods=["GET"])
 def home():
     return "OK", 200
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
-async def webhook():
-    data = request.get_json(force=True)
+def webhook():
+    global bot_app
 
+    if bot_app is None:
+        return "Bot iniciando", 503
+
+    data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
-    await bot_app.initialize()
-    await bot_app.process_update(update)
+
+    bot_app.update_queue.put_nowait(update)
 
     return "ok", 200
 
-# ================= START =================
-
-if __name__ == "__main__":
+def iniciar_webhook():
     import requests
 
-    print("🚀 Iniciando...")
+    print("🌐 Configurando webhook...")
 
-    # seta webhook
-    requests.get(
-        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
-    )
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+    webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    r = requests.get(url, params={"url": webhook_url})
+    print("Webhook:", r.text)
+
+    app.run(host="0.0.0.0", port=10000)
+
+# =============================
+# START APP
+# =============================
+
+if __name__ == "__main__":
+    print("🚀 Iniciando aplicação...")
+
+    threading.Thread(target=iniciar_bot).start()
+    threading.Thread(target=iniciar_webhook).start()
