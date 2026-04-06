@@ -32,16 +32,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    try:
-        with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
-            await update.message.reply_photo(
-                photo=foto,
-                caption="😈 Oi amor... sua garotinha está aqui 🔥\n\nConteúdo exclusivo 👇",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-    except Exception as e:
-        print("ERRO FOTO START:", e)
-        await update.message.reply_text("Erro ao carregar imagem")
+    with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
+        await update.message.reply_photo(
+            photo=foto,
+            caption="😈 Oi amor... sua garotinha está aqui 🔥\n\n🔞 Conteúdo exclusivo 👇",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 # =============================
 # BOTÕES
@@ -55,32 +51,44 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 👀 PRÉVIA = FOTO
     if query.data == "previa":
-        try:
-            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
-                await query.message.reply_photo(
-                    photo=foto,
-                    caption="👀 Só uma prévia...\nO resto é VIP 😈"
-                )
-        except Exception as e:
-            print("ERRO PREVIA FOTO:", e)
-            await query.message.reply_text("Erro ao carregar prévia")
+        with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
+            await query.message.reply_photo(
+                photo=foto,
+                caption="👀 Só uma prévia...\nO resto é VIP 😈"
+            )
 
-    # 🔒 VIP = VÍDEO
+    # 🔒 VIP
     elif query.data == "vip":
-        try:
-            if user_id in usuarios_vip:
-                with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
-                    await query.message.reply_video(
-                        video=video,
-                        caption="🔥 VIP liberado 😈"
-                    )
-            else:
-                await query.message.reply_text(
-                    "🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈"
+
+        # se já é VIP → manda vídeo
+        if user_id in usuarios_vip:
+            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+                await query.message.reply_video(
+                    video=video,
+                    caption="🔥 VIP liberado 😈"
                 )
-        except Exception as e:
-            print("ERRO VIDEO VIP:", e)
-            await query.message.reply_text("Erro ao carregar conteúdo VIP")
+
+        # se NÃO é VIP → mostra botões
+        else:
+            keyboard = [
+                [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)],
+                [InlineKeyboardButton("✅ Já paguei (teste)", callback_data="liberar_vip")]
+            ]
+
+            await query.message.reply_text(
+                "🔒 Conteúdo VIP bloqueado!\n\nLibere agora 👇",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
+    # 🔓 LIBERAR VIP (TESTE)
+    elif query.data == "liberar_vip":
+        usuarios_vip.add(user_id)
+
+        await query.message.reply_text("✅ VIP liberado! Clique novamente em VIP 😈")
+
+# =============================
+# HANDLERS
+# =============================
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
