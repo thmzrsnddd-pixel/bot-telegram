@@ -1,4 +1,5 @@
 import threading
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -18,19 +19,19 @@ bot_app = None
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 Comando /start recebido")
+    print("📩 /start recebido")
     await update.message.reply_text("🔥 Bot funcionando!")
 
-def iniciar_bot():
+async def iniciar_bot():
     global bot_app
 
     bot_app = ApplicationBuilder().token(TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
 
-    print("🤖 Bot iniciado!")
+    await bot_app.initialize()
+    await bot_app.start()
 
-    bot_app.initialize()
-    bot_app.start()
+    print("🤖 Bot iniciado!")
 
 # =============================
 # WEBHOOK
@@ -45,7 +46,7 @@ def webhook():
     global bot_app
 
     if bot_app is None:
-        return "ok", 200  # ⚠️ importante
+        return "ok", 200
 
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
@@ -53,6 +54,13 @@ def webhook():
     bot_app.update_queue.put_nowait(update)
 
     return "ok", 200
+
+# =============================
+# INICIAR TUDO
+# =============================
+
+def run_async():
+    asyncio.run(iniciar_bot())
 
 def iniciar_webhook():
     import requests
@@ -67,12 +75,8 @@ def iniciar_webhook():
 
     app.run(host="0.0.0.0", port=10000)
 
-# =============================
-# START APP
-# =============================
-
 if __name__ == "__main__":
     print("🚀 Iniciando aplicação...")
 
-    threading.Thread(target=iniciar_bot).start()
+    threading.Thread(target=run_async).start()
     threading.Thread(target=iniciar_webhook).start()
