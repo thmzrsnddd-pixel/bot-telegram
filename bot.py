@@ -29,7 +29,6 @@ def iniciar_bot():
 
     print("🤖 Bot iniciado!")
 
-    # 🔥 ISSO AQUI É O MAIS IMPORTANTE
     bot_app.initialize()
     bot_app.start()
 
@@ -45,8 +44,9 @@ def home():
 def webhook():
     global bot_app
 
-if bot_app is None:
-    return "ok", 200
+    if bot_app is None:
+        return "ok", 200  # ⚠️ importante
+
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
 
