@@ -86,7 +86,6 @@ def webhook():
 
     update = Update.de_json(data, bot_app.bot)
 
-    # 🔥 CORREÇÃO AQUI
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(bot_app.process_update(update))
@@ -94,14 +93,13 @@ def webhook():
     return "ok", 200
 
 # =============================
-# INICIAR BOT
+# INICIAR BOT (SEM POLLING)
 # =============================
 
 async def iniciar_bot():
     print("🚀 Bot iniciando...")
 
     await bot_app.initialize()
-    await bot_app.start()
 
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
