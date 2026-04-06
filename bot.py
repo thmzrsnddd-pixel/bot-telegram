@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -12,32 +11,29 @@ import requests
 
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
-
 LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
-# controle simples (depois podemos melhorar)
 usuarios_vip = set()
 
 # =============================
-# START (BOAS-VINDAS)
+# START (BOAS-VINDAS + FOTO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     keyboard = [
-        [InlineKeyboardButton("👀 Ver prévia", callback_data="previa")],
-        [InlineKeyboardButton("🔒 Conteúdo VIP", callback_data="vip")],
-        [InlineKeyboardButton("💸 Comprar acesso", url=LINK_PAGAMENTO)]
+        [InlineKeyboardButton("👀 Ver prévia 👀", callback_data="previa")],
+        [InlineKeyboardButton("🔒 Conteúdo VIP 🔒", callback_data="vip")],
+        [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_photo(
-        photo="https://i.imgur.com/qItbtsE.jpeg",  # 👈 FOTO AQUI
-        caption=" Ooi amor ! bem vindo 😈\n\nConteúdo exclusivo te espera 😈👇",
-        reply_markup=reply_markup
+        photo=open("foto1.jpg", "rb"),
+        caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 # =============================
@@ -50,24 +46,24 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # 👀 PRÉVIA
+    # 👀 PRÉVIA (VÍDEO)
     if query.data == "previa":
-        await query.message.reply_photo(
-            photo="https://i.imgur.com/WDg1WJr.jpeg",  # 👈 PREVIA
-            caption="👀 Só uma prévia...\n\nO resto é VIP 😈"
+        await query.message.reply_video(
+            video=open("video1.mp4", "rb"),
+            caption="👀 Só uma prévia...\nO resto é VIP 😈"
         )
 
-    # 🔒 VIP
+    # 🔒 VIP (FOTO + BLOQUEIO)
     elif query.data == "vip":
         if user_id in usuarios_vip:
-            await query.message.reply_video(
-                video="https://SEU_VIDEO.mp4",  # 👈 VIDEO VIP
-                caption="🔥 Conteúdo VIP liberado 😈"
+            await query.message.reply_photo(
+                photo=open("foto2.jpg", "rb"),
+                caption="🔥 VIP liberado 😈"
             )
         else:
-            await query.message.reply_text(
-                "🔒 Conteúdo VIP bloqueado!\n\n"
-                "💸 Compre o acesso para liberar tudo 😈"
+            await query.message.reply_photo(
+                photo=open("foto2.jpg", "rb"),
+                caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora e acessa tudo 😈"
             )
 
 # =============================
@@ -91,7 +87,6 @@ def webhook():
     data = request.get_json(force=True)
 
     update = Update.de_json(data, bot_app.bot)
-
     asyncio.run(bot_app.process_update(update))
 
     return "ok", 200
