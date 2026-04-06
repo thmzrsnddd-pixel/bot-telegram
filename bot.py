@@ -17,6 +17,7 @@ app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 usuarios_vip = set()
+iniciado = False
 
 # =============================
 # START
@@ -74,7 +75,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK (CORRIGIDO)
+# WEBHOOK
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -88,7 +89,9 @@ def webhook():
         data = request.get_json(force=True)
         update = Update.de_json(data, bot_app.bot)
 
-        asyncio.run(bot_app.process_update(update))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(bot_app.process_update(update))
 
         return "ok", 200
 
@@ -97,7 +100,7 @@ def webhook():
         return "error", 500
 
 # =============================
-# INICIALIZAÇÃO
+# SETUP BOT
 # =============================
 
 async def setup():
@@ -110,16 +113,22 @@ async def setup():
     r = requests.get(url, params={"url": webhook_url})
     print("Webhook:", r.text)
 
-def iniciar_bot():
+# =============================
+# INICIALIZAÇÃO SEGURA
+# =============================
+
+@app.before_first_request
+def iniciar():
+    global iniciado
+    if iniciado:
+        return
+
+    iniciado = True
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(setup())
 
-# roda ao iniciar (compatível com gunicorn)
-iniciar_bot()
-
 # =============================
-# FLASK
+# FIM
 # =============================
-
-# NÃO precisa app.run com gunicorn
