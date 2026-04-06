@@ -36,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
             await update.message.reply_photo(
                 photo=foto,
-                caption="😈 Oi amor...Aqui tem tudo que deseja \n\n?Conteudo exclusivo 👇",
+                caption="😈 Oi amor...sua garotinha esta aqui 🔥 \n\n Conteudo exclusivo  👇",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
     except Exception as e:
@@ -71,7 +71,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     await query.message.reply_photo(
                         photo=foto,
-                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
+                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈"
                     )
         except Exception as e:
             print("ERRO FOTO VIP:", e)
