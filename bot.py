@@ -8,8 +8,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 # CONFIG
 # =============================
 
-TOKEN = os.environ.get("8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0")
-PUBLIC_URL = os.environ.get("https://bot-telegram-jdwg.onrender.com")
+TOKEN = os.environ.get("TOKEN")
+PUBLIC_URL = os.environ.get("PUBLIC_URL")
 
 app = Flask(__name__)
 
