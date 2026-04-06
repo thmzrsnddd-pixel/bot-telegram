@@ -5,7 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import asyncio
 import requests
 import os
-import sqlite3
+import json
 
 # =============================
 # CONFIG
@@ -13,87 +13,52 @@ import sqlite3
 
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
-
-MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
+LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
 # =============================
-# BANCO DE DADOS
+# BANCO DE VIP (arquivo)
 # =============================
 
-conn = sqlite3.connect("vip.db", check_same_thread=False)
-cursor = conn.cursor()
+def carregar_vip():
+    if not os.path.exists(VIP_FILE):
+        return set()
+    with open(VIP_FILE, "r") as f:
+        return set(json.load(f))
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS vip_users (
-    user_id INTEGER PRIMARY KEY
-)
-""")
-conn.commit()
+def salvar_vip(vips):
+    with open(VIP_FILE, "w") as f:
+        json.dump(list(vips), f)
 
-def is_vip(user_id):
-    cursor.execute("SELECT * FROM vip_users WHERE user_id=?", (user_id,))
-    return cursor.fetchone() is not None
-
-def add_vip(user_id):
-    cursor.execute("INSERT OR IGNORE INTO vip_users (user_id) VALUES (?)", (user_id,))
-    conn.commit()
+usuarios_vip = carregar_vip()
 
 # =============================
-# GERAR PAGAMENTO
-# =============================
-
-def criar_pagamento(user_id):
-    url = "https://api.mercadopago.com/v1/payments"
-
-    headers = {
-        "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "transaction_amount": 10,
-        "description": "Acesso VIP",
-        "payment_method_id": "pix",
-        "payer": {
-            "email": f"user{user_id}@teste.com"
-        },
-        "external_reference": str(user_id)
-    }
-
-    r = requests.post(url, json=data, headers=headers)
-    resposta = r.json()
-
-    return resposta.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
-
-# =============================
-# START
+# HANDLERS
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-
-    link_pagamento = criar_pagamento(user_id)
-
     keyboard = [
-        [InlineKeyboardButton("👀 Ver prévia", callback_data="previa")],
-        [InlineKeyboardButton("🔒 Conteúdo VIP", callback_data="vip")],
-        [InlineKeyboardButton("💰 Comprar acesso", url=link_pagamento)]
+        [InlineKeyboardButton("👀 Ver prévia 👀", callback_data="previa")],
+        [InlineKeyboardButton("🔒 Conteúdo VIP 🔒", callback_data="vip")],
+        [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
-        await update.message.reply_photo(
-            photo=foto,
-            caption="😈 Quer ver tudo? 👇",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+    try:
+        with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
+            await update.message.reply_photo(
+                photo=foto,
+                caption="😈 Oi amor...\n\nConteúdo exclusivo te esperando 👇🔥",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+    except Exception as e:
+        print("ERRO FOTO:", e)
+        await update.message.reply_text("Erro ao carregar imagem")
 
-# =============================
-# BOTÕES
 # =============================
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -102,22 +67,43 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
+    # ================= PREVIA =================
     if query.data == "previa":
-        with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
-            await query.message.reply_photo(
-                photo=foto,
-                caption="👀 Só uma prévia..."
-            )
-
-    elif query.data == "vip":
-        if is_vip(user_id):
-            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
-                await query.message.reply_video(
-                    video=video,
-                    caption="🔥 VIP liberado 😈"
+        try:
+            with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
+                await query.message.reply_photo(
+                    photo=foto,
+                    caption="👀 Só uma prévia...\nO resto é VIP 😈"
                 )
-        else:
-            await query.message.reply_text("🔒 Libere o VIP para acessar 😈")
+        except Exception as e:
+            print("ERRO PREVIA:", e)
+
+    # ================= VIP =================
+    elif query.data == "vip":
+        try:
+            keyboard = [
+                [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
+            ]
+
+            if user_id in usuarios_vip:
+                with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+                    await query.message.reply_video(
+                        video=video,
+                        caption="🔥 VIP liberado 😈",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
+            else:
+                await query.message.reply_text(
+                    "🔒 Conteúdo VIP bloqueado!\n\n💸 Libere agora 😈",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+
+        except Exception as e:
+            print("ERRO VIP:", e)
+
+# =============================
+# REGISTRO HANDLERS
+# =============================
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
@@ -125,6 +111,11 @@ bot_app.add_handler(CallbackQueryHandler(botoes))
 # =============================
 # WEBHOOK TELEGRAM
 # =============================
+
+@app.route("/", methods=["GET"])
+def home():
+    return "BOT ONLINE", 200
+
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
@@ -140,32 +131,33 @@ def webhook():
     return "ok", 200
 
 # =============================
-# WEBHOOK MERCADO PAGO
+# WEBHOOK MERCADO PAGO (AUTOMÁTICO)
 # =============================
 
 @app.route("/mp", methods=["POST"])
-def mp_webhook():
-    data = request.json
+def mercado_pago():
+    global usuarios_vip
+
+    data = request.get_json()
+    print("MP DATA:", data)
 
     try:
-        payment_id = data["data"]["id"]
+        if data.get("type") == "payment":
+            user_id = data.get("data", {}).get("id")
 
-        url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
-        headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+            # 🔥 AQUI você pode melhorar depois com validação real
+            # por enquanto libera direto
 
-        r = requests.get(url, headers=headers)
-        pagamento = r.json()
+            if user_id:
+                usuarios_vip.add(user_id)
+                salvar_vip(usuarios_vip)
 
-        if pagamento["status"] == "approved":
-            user_id = int(pagamento["external_reference"])
-
-            add_vip(user_id)
-
-            # envia mensagem automática
-            asyncio.run(bot_app.bot.send_message(
-                chat_id=user_id,
-                text="🔥 Pagamento aprovado! VIP liberado 😈"
-            ))
+                # envia mensagem no telegram
+                url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+                requests.post(url, json={
+                    "chat_id": user_id,
+                    "text": "🔥 Pagamento aprovado! VIP liberado 😈"
+                })
 
     except Exception as e:
         print("ERRO MP:", e)
@@ -173,13 +165,17 @@ def mp_webhook():
     return "ok", 200
 
 # =============================
-# SET WEBHOOKS
+# SET WEBHOOK TELEGRAM
 # =============================
 
-def set_webhooks():
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-                 params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"})
+def set_webhook():
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+    webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    print("Telegram OK")
+    try:
+        r = requests.get(url, params={"url": webhook_url})
+        print("Webhook Telegram:", r.text)
+    except Exception as e:
+        print("Erro webhook:", e)
 
-set_webhooks()
+set_webhook()
