@@ -46,10 +46,21 @@ def home():
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
+    print("🔥 RECEBI UPDATE DO TELEGRAM")
+
     global bot_app
 
     if bot_app is None:
+        print("⚠️ bot_app ainda None")
         return "ok", 200
+
+    data = request.get_json(force=True)
+    print("📩 DATA:", data)
+
+    update = Update.de_json(data, bot_app.bot)
+    bot_app.update_queue.put_nowait(update)
+
+    return "ok", 200
 
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
