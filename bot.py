@@ -85,24 +85,27 @@ def criar_pagamento(user_id, plano):
     return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
 
 # =============================
-# START
+# START (FUNIL INICIO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("👀 Prévia", callback_data="previa")],
-        [InlineKeyboardButton("🔒 VIP", callback_data="vip")],
-        [InlineKeyboardButton("💰 1 DIA", callback_data="1d")],
-        [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
-        [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
+        [InlineKeyboardButton("👀 Ver prévia", callback_data="previa")],
+        [InlineKeyboardButton("🔒 Conteúdo VIP", callback_data="vip")],
+        [InlineKeyboardButton("💰 Liberar acesso", callback_data="comprar")]
     ]
 
-    with open(os.path.join(BASE_DIR, "foto1.jpg"), "rb") as foto:
-        await update.message.reply_photo(
-            photo=foto,
-            caption="😈 Conteúdo exclusivo 👇",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+    await update.message.reply_text(
+        """😈 Oi amor...
+
+Você acabou de encontrar meu cantinho secreto 🔥
+
+Aqui eu mostro coisas que ninguém mais vê...
+sem censura 😏
+
+👇 escolhe o que você quer ver:""",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 # =============================
 # BOTÕES
@@ -114,26 +117,73 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
+    # PRÉVIA
     if query.data == "previa":
-        with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
-            await query.message.reply_photo(photo=foto, caption="👀 Prévia")
+        await query.message.reply_text(
+            """👀 Só um gostinho...
 
+Você acha mesmo que eu ia mostrar tudo de graça? 😈
+
+O melhor tá guardado pra quem sabe aproveitar 🔥"""
+        )
+
+    # VIP
     elif query.data == "vip":
         if is_vip(user_id):
-            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
-                await query.message.reply_video(video=video, caption="🔥 VIP liberado")
-        else:
-            await query.message.reply_text("🔒 Compre um plano para liberar")
+            await query.message.reply_text(
+                """🔥 Agora sim...
 
+Você foi liberado 😈
+
+Aproveita bem... porque aqui dentro eu não me seguro 💋"""
+            )
+        else:
+            keyboard = [
+                [InlineKeyboardButton("💰 1 DIA", callback_data="1d")],
+                [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
+                [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
+            ]
+
+            await query.message.reply_text(
+                """🔒 Calma...
+
+Esse conteúdo é só pra quem já desbloqueou 😏
+
+🔥 Lá dentro tem:
+- vídeos completos
+- conteúdos sem censura
+- coisas que eu não posto em lugar nenhum...
+
+💸 Quer entrar?""",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
+    # BOTÃO COMPRAR DIRETO
+    elif query.data == "comprar":
+        keyboard = [
+            [InlineKeyboardButton("💰 1 DIA - Acesso rápido", callback_data="1d")],
+            [InlineKeyboardButton("🔥 7 DIAS - Mais popular", callback_data="7d")],
+            [InlineKeyboardButton("👑 15 DIAS - VIP total", callback_data="15d")]
+        ]
+
+        await query.message.reply_text(
+            "💸 Escolhe seu plano:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    # PLANOS
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
-        await query.message.reply_text(f"💰 Pague aqui:\n{link}")
+
+        await query.message.reply_text(
+            f"💰 Pague aqui:\n{link}"
+        )
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK TELEGRAM (CORRIGIDO)
+# WEBHOOK TELEGRAM
 # =============================
 
 loop = asyncio.new_event_loop()
