@@ -14,7 +14,6 @@ import time
 
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
-
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
 app = Flask(__name__)
@@ -23,7 +22,12 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
-loop = asyncio.get_event_loop()
+# =============================
+# LOOP GLOBAL (FIX DO ERRO)
+# =============================
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 # =============================
 # PLANOS
@@ -87,8 +91,6 @@ def criar_pagamento(user_id, plano):
     r = requests.post(url, json=payload, headers=headers)
     data = r.json()
 
-    print("MP:", data)
-
     return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
 
 # =============================
@@ -121,42 +123,33 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
+    # PREVIA (FOTO)
     if query.data == "previa":
         with open(os.path.join(BASE_DIR, "foto2.jpg"), "rb") as foto:
-            await query.message.reply_photo(photo=foto, caption="👀 Prévia")
+            await query.message.reply_photo(photo=foto, caption="👀 Prévia...")
 
+    # VIP (VIDEO)
     elif query.data == "vip":
         if is_vip(user_id):
-            with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
-                await query.message.reply_video(video=video, caption="🔥 VIP liberado")
+            try:
+                with open(os.path.join(BASE_DIR, "video1.mp4"), "rb") as video:
+                    await query.message.reply_video(video=video, caption="🔥 VIP liberado")
+            except Exception as e:
+                print("ERRO VIDEO:", e)
+                await query.message.reply_text("Erro ao enviar vídeo")
         else:
-            await query.message.reply_text("🔒 Compre um plano")
+            await query.message.reply_text("🔒 Compre um plano para acessar")
 
+    # PLANOS
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
-
-        if link:
-            await query.message.reply_text(f"💰 Pague aqui:\n{link}")
-        else:
-            await query.message.reply_text("❌ Erro ao gerar pagamento")
-
-# =============================
-# HANDLERS
-# =============================
+        await query.message.reply_text(f"💰 Pague aqui:\n{link}")
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# ROTA HOME (IMPORTANTE)
-# =============================
-
-@app.route("/", methods=["GET"])
-def home():
-    return "BOT ONLINE", 200
-
-# =============================
-# WEBHOOK TELEGRAM (CORRIGIDO)
+# WEBHOOK TELEGRAM
 # =============================
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
@@ -164,10 +157,7 @@ def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
 
-    asyncio.run_coroutine_threadsafe(
-        bot_app.process_update(update),
-        loop
-    )
+    loop.create_task(bot_app.process_update(update))
 
     return "ok", 200
 
@@ -180,32 +170,29 @@ def mp():
     data = request.get_json()
 
     try:
-        if data.get("type") == "payment" or data.get("topic") == "payment":
+        if data.get("type") == "payment":
             payment_id = data["data"]["id"]
 
-            r = requests.get(
-                f"https://api.mercadopago.com/v1/payments/{payment_id}",
-                headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-            )
+            url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
+            headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
 
+            r = requests.get(url, headers=headers)
             pagamento = r.json()
 
-            if pagamento.get("status") == "approved":
-                ref = pagamento.get("external_reference")
+            if pagamento["status"] == "approved":
+                ref = pagamento["external_reference"]
+                user_id, plano = ref.split("|")
 
-                if ref and "|" in ref:
-                    user_id, plano = ref.split("|")
+                dias = PLANOS[plano]["dias"]
+                liberar_vip(user_id, dias)
 
-                    dias = PLANOS[plano]["dias"]
-                    liberar_vip(user_id, dias)
-
-                    requests.post(
-                        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                        json={
-                            "chat_id": user_id,
-                            "text": f"🔥 VIP liberado por {dias} dias!"
-                        }
-                    )
+                requests.post(
+                    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                    json={
+                        "chat_id": user_id,
+                        "text": f"🔥 VIP liberado por {dias} dias!"
+                    }
+                )
 
     except Exception as e:
         print("ERRO MP:", e)
@@ -213,19 +200,27 @@ def mp():
     return "ok", 200
 
 # =============================
-# START BOT (CORRETO)
+# HOME
 # =============================
 
-async def iniciar():
-    await bot_app.initialize()
+@app.route("/")
+def home():
+    return "BOT ONLINE", 200
 
-loop.run_until_complete(iniciar())
+# =============================
+# START BOT (UMA VEZ)
+# =============================
+
+loop.run_until_complete(bot_app.initialize())
 
 # =============================
 # SET WEBHOOK
 # =============================
 
-requests.get(
-    f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-    params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
-)
+def set_webhook():
+    requests.get(
+        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
+        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
+    )
+
+set_webhook()
