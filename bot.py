@@ -19,7 +19,7 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 usuarios_vip = set()
 
 # =============================
-# START
+# HANDLERS
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -33,10 +33,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "😈 Oi amor...\n\nQuer ver tudo? 👇",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
-# =============================
-# BOTÕES
-# =============================
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -53,15 +49,11 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.message.reply_text("🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈")
 
-# =============================
-# HANDLERS
-# =============================
-
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK CORRETO
+# WEBHOOK
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -72,25 +64,31 @@ def home():
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
-
     update = Update.de_json(data, bot_app.bot)
 
-    async def process():
+    async def run():
         await bot_app.initialize()
         await bot_app.process_update(update)
 
-    asyncio.run(process())
+    asyncio.run(run())
 
     return "ok", 200
 
+
 # =============================
-# SETAR WEBHOOK AO INICIAR
+# SET WEBHOOK NA SUBIDA (SEM before_first_request)
 # =============================
 
-@app.before_first_request
 def set_webhook():
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    r = requests.get(url, params={"url": webhook_url})
-    print("Webhook setado:", r.text)
+    try:
+        r = requests.get(url, params={"url": webhook_url})
+        print("Webhook setado:", r.text)
+    except Exception as e:
+        print("Erro ao setar webhook:", e)
+
+
+# roda automaticamente quando o gunicorn sobe
+set_webhook()
