@@ -4,12 +4,13 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 import asyncio
 import requests
+import os
 
 # =============================
 # CONFIG
 # =============================
 
-TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
+TOKEN = "SEU_TOKEN_AQUI"  # TROCA ISSO DEPOIS
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
 
@@ -18,8 +19,11 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 
 usuarios_vip = set()
 
+# caminho base (ESSENCIAL PRO RENDER)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # =============================
-# HANDLERS
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -29,10 +33,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    await update.message.reply_text(
-        "😈 Oi amor...\n\nQuer ver tudo? 👇",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    try:
+        caminho_foto = os.path.join(BASE_DIR, "foto1.jpg")
+
+        with open(caminho_foto, "rb") as foto:
+            await update.message.reply_photo(
+                photo=foto,
+                caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
+    except Exception as e:
+        print("ERRO FOTO START:", e)
+        await update.message.reply_text("Erro ao carregar mídia 😢")
+
+# =============================
+# BOTÕES
+# =============================
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -41,13 +58,42 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "previa":
-        await query.message.reply_text("👀 Só uma prévia...\nO resto é VIP 😈")
+        try:
+            caminho_video = os.path.join(BASE_DIR, "video1.mp4")
+
+            with open(caminho_video, "rb") as video:
+                await query.message.reply_video(
+                    video=video,
+                    caption="👀 Só uma prévia...\nO resto é VIP 😈"
+                )
+
+        except Exception as e:
+            print("ERRO VIDEO:", e)
+            await query.message.reply_text("Erro ao carregar vídeo 😢")
 
     elif query.data == "vip":
-        if user_id in usuarios_vip:
-            await query.message.reply_text("🔥 VIP liberado 😈")
-        else:
-            await query.message.reply_text("🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈")
+        try:
+            caminho_foto2 = os.path.join(BASE_DIR, "foto2.jpg")
+
+            with open(caminho_foto2, "rb") as foto:
+                if user_id in usuarios_vip:
+                    await query.message.reply_photo(
+                        photo=foto,
+                        caption="🔥 VIP liberado 😈"
+                    )
+                else:
+                    await query.message.reply_photo(
+                        photo=foto,
+                        caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
+                    )
+
+        except Exception as e:
+            print("ERRO FOTO VIP:", e)
+            await query.message.reply_text("Erro ao carregar conteúdo 😢")
+
+# =============================
+# HANDLERS
+# =============================
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
@@ -74,9 +120,8 @@ def webhook():
 
     return "ok", 200
 
-
 # =============================
-# SET WEBHOOK NA SUBIDA (SEM before_first_request)
+# SET WEBHOOK
 # =============================
 
 def set_webhook():
@@ -87,8 +132,6 @@ def set_webhook():
         r = requests.get(url, params={"url": webhook_url})
         print("Webhook setado:", r.text)
     except Exception as e:
-        print("Erro ao setar webhook:", e)
+        print("Erro webhook:", e)
 
-
-# roda automaticamente quando o gunicorn sobe
 set_webhook()
