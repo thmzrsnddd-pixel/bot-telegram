@@ -35,8 +35,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_photo(
-        photo="https://i.imgur.com/SEU_LINK.jpg",  # 👈 FOTO AQUI
-        caption="🔥 Bem-vindo...\n\nConteúdo exclusivo te espera 😈👇",
+        photo="https://i.imgur.com/qItbtsE.jpeg",  # 👈 FOTO AQUI
+        caption=" Ooi amor ! bem vindo 😈\n\nConteúdo exclusivo te espera 😈👇",
         reply_markup=reply_markup
     )
 
@@ -53,7 +53,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 👀 PRÉVIA
     if query.data == "previa":
         await query.message.reply_photo(
-            photo="https://i.imgur.com/SEU_PREVIEW.jpg",  # 👈 PREVIA
+            photo="https://i.imgur.com/WDg1WJr.jpeg",  # 👈 PREVIA
             caption="👀 Só uma prévia...\n\nO resto é VIP 😈"
         )
 
