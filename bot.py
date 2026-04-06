@@ -1,6 +1,6 @@
 import os
 import threading
-import requests
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -19,20 +19,23 @@ bot_app = None
 # TELEGRAM BOT
 # =============================
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔥 Bot funcionando!")
+
 def iniciar_bot():
-    import asyncio
     global bot_app
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     bot_app = ApplicationBuilder().token(TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
 
-    async def start_bot():
-        await bot_app.initialize()
-        await bot_app.start()
-
-    asyncio.run(start_bot())
+    loop.run_until_complete(bot_app.initialize())
+    loop.run_until_complete(bot_app.start())
 
     print("🤖 Bot iniciado!")
+
 # =============================
 # WEBHOOK
 # =============================
@@ -45,18 +48,8 @@ def home():
 def webhook():
     global bot_app
 
-@app.route(f"/webhook/{TOKEN}", methods=["POST"])
-def webhook():
-    global bot_app
-
     if bot_app is None:
-        return "ok", 200  # <-- NÃO pode retornar erro
-
-    data = request.get_json(force=True)
-    update = Update.de_json(data, bot_app.bot)
-    bot_app.update_queue.put_nowait(update)
-
-    return "ok", 200
+        return "ok", 200
 
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
@@ -65,6 +58,8 @@ def webhook():
     return "ok", 200
 
 def iniciar_webhook():
+    import requests
+
     print("🌐 Configurando webhook...")
 
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
