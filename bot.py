@@ -19,22 +19,22 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 usuarios_vip = set()
 
 # =============================
-# START
+# START (BOAS-VINDAS + FOTO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     keyboard = [
         [InlineKeyboardButton("👀 Ver prévia 👀", callback_data="previa")],
         [InlineKeyboardButton("🔒 Conteúdo VIP 🔒", callback_data="vip")],
         [InlineKeyboardButton("💰 Comprar acesso", url=LINK_PAGAMENTO)]
     ]
 
-    await update.message.reply_photo(
-        photo=open("foto1.jpg", "rb"),
-        caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    with open("foto1.jpg", "rb") as foto:
+        await update.message.reply_photo(
+            photo=foto,
+            caption="😈 Oi amor...\n\nQuer ver tudo? 👇",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 # =============================
 # BOTÕES
@@ -47,22 +47,24 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "previa":
-        await query.message.reply_video(
-            video=open("video1.mp4", "rb"),
-            caption="👀 Só uma prévia...\nO resto é VIP 😈"
-        )
+        with open("video1.mp4", "rb") as video:
+            await query.message.reply_video(
+                video=video,
+                caption="👀 Só uma prévia...\nO resto é VIP 😈"
+            )
 
     elif query.data == "vip":
-        if user_id in usuarios_vip:
-            await query.message.reply_photo(
-                photo=open("foto2.jpg", "rb"),
-                caption="🔥 VIP liberado 😈"
-            )
-        else:
-            await query.message.reply_photo(
-                photo=open("foto2.jpg", "rb"),
-                caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
-            )
+        with open("foto2.jpg", "rb") as foto:
+            if user_id in usuarios_vip:
+                await query.message.reply_photo(
+                    photo=foto,
+                    caption="🔥 VIP liberado 😈"
+                )
+            else:
+                await query.message.reply_photo(
+                    photo=foto,
+                    caption="🔒 Conteúdo VIP bloqueado!\n\n💸 Libera agora 😈"
+                )
 
 # =============================
 # HANDLERS
@@ -77,29 +79,28 @@ bot_app.add_handler(CallbackQueryHandler(botoes))
 
 @app.route("/", methods=["GET"])
 def home():
-    return "OK", 200
+    return "BOT ONLINE", 200
 
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
-    data = request.get_json(force=True)
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
 
-    update = Update.de_json(data, bot_app.bot)
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(bot_app.process_update(update))
+    asyncio.get_event_loop().create_task(
+        bot_app.process_update(update)
+    )
 
     return "ok", 200
 
 # =============================
-# INICIAR BOT (SEM POLLING)
+# INICIAR BOT
 # =============================
 
 async def iniciar_bot():
     print("🚀 Bot iniciando...")
 
     await bot_app.initialize()
+    await bot_app.start()
 
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
@@ -112,10 +113,7 @@ async def iniciar_bot():
 # =============================
 
 if __name__ == "__main__":
-    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.create_task(iniciar_bot())
 
-    # 🔥 roda o bot ANTES de iniciar o servidor
-    asyncio.run(iniciar_bot())
-
-    # depois sobe o flask
     app.run(host="0.0.0.0", port=10000)
