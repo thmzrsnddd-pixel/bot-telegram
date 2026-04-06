@@ -74,7 +74,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK
+# WEBHOOK (CORRIGIDO)
 # =============================
 
 @app.route("/", methods=["GET"])
@@ -83,14 +83,21 @@ def home():
 
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
-async def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, bot_app.bot)
-    await bot_app.process_update(update)
-    return "ok", 200
+def webhook():
+    try:
+        data = request.get_json(force=True)
+        update = Update.de_json(data, bot_app.bot)
+
+        asyncio.run(bot_app.process_update(update))
+
+        return "ok", 200
+
+    except Exception as e:
+        print("ERRO WEBHOOK:", e)
+        return "error", 500
 
 # =============================
-# INICIAR
+# INICIALIZAÇÃO
 # =============================
 
 async def setup():
@@ -100,15 +107,19 @@ async def setup():
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
     webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    requests.get(url, params={"url": webhook_url})
-    print("✅ Webhook configurado")
+    r = requests.get(url, params={"url": webhook_url})
+    print("Webhook:", r.text)
 
-# roda setup uma vez
-asyncio.get_event_loop().run_until_complete(setup())
+def iniciar_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(setup())
+
+# roda ao iniciar (compatível com gunicorn)
+iniciar_bot()
 
 # =============================
 # FLASK
 # =============================
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+# NÃO precisa app.run com gunicorn
