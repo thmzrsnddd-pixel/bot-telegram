@@ -4,6 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 import asyncio
 import requests
+import threading
 
 # =============================
 # CONFIG
@@ -14,7 +15,6 @@ PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 LINK_PAGAMENTO = "https://mpago.la/2KwTbi7"
 
 app = Flask(__name__)
-
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 usuarios_vip = set()
@@ -106,23 +106,27 @@ def webhook():
         return "error", 500
 
 # =============================
-# INICIALIZAÇÃO
+# INICIAR BOT (THREAD SAFE)
 # =============================
 
-async def setup():
-    await bot_app.initialize()
-    await bot_app.start()
+def start_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
+    async def setup():
+        await bot_app.initialize()
+        await bot_app.start()
 
-    requests.get(
-        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-        params={"url": webhook_url}
-    )
+        webhook_url = f"{PUBLIC_URL}/webhook/{TOKEN}"
 
-    print("Webhook configurado!")
+        requests.get(
+            f"https://api.telegram.org/bot{TOKEN}/setWebhook",
+            params={"url": webhook_url}
+        )
 
-# roda ao iniciar (GUNICORN)
-@app.before_first_request
-def iniciar():
-    asyncio.run(setup())
+        print("Webhook configurado!")
+
+    loop.run_until_complete(setup())
+
+# inicia em thread separada (ESSENCIAL)
+threading.Thread(target=start_bot).start()
