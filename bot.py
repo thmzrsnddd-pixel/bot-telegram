@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
 # =============================
-# TEXTOS (COPY)
+# TEXTOS
 # =============================
 
 TEXTOS = {
@@ -199,7 +199,16 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_vip(user_id):
             await query.message.reply_text(TEXTOS["vip_sim"])
         else:
-            await query.message.reply_text(TEXTOS["vip_nao"])
+            keyboard_planos = [
+                [InlineKeyboardButton("💰 1 DIA", callback_data="1d")],
+                [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
+                [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
+            ]
+
+            await query.message.reply_text(
+                TEXTOS["vip_nao"],
+                reply_markup=InlineKeyboardMarkup(keyboard_planos)
+            )
 
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
@@ -230,7 +239,7 @@ def webhook():
     return "ok"
 
 # =============================
-# WEBHOOK MERCADO PAGO
+# WEBHOOK MP
 # =============================
 
 @app.route("/mp", methods=["POST"])
@@ -285,7 +294,7 @@ def set_webhook():
         print("ERRO WEBHOOK:", e)
 
 # =============================
-# INIT (RENDER / GUNICORN)
+# INIT
 # =============================
 
 asyncio.run(bot_app.initialize())
