@@ -28,13 +28,13 @@ VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 # =============================
 
 PLANOS = {
-    "1d": {"dias": 1, "preco": 10},
-    "7d": {"dias": 7, "preco": 20},
-    "15d": {"dias": 15, "preco": 30}
+    "1d": {"dias": 1, "preco": 8,99},
+    "7d": {"dias": 7, "preco": 14,99},
+    "15d": {"dias": 15, "preco": 22,99}
 }
 
 # =============================
-# VIP STORAGE
+# VIP
 # =============================
 
 def carregar_vip():
@@ -57,11 +57,12 @@ def is_vip(user_id):
 
 def liberar_vip(user_id, dias):
     user_id = str(user_id)
-    usuarios_vip[user_id] = time.time() + (dias * 86400)
+    tempo = dias * 86400
+    usuarios_vip[user_id] = time.time() + tempo
     salvar_vip(usuarios_vip)
 
 # =============================
-# PAGAMENTO PIX
+# PAGAMENTO
 # =============================
 
 def criar_pagamento(user_id, plano):
@@ -85,25 +86,24 @@ def criar_pagamento(user_id, plano):
     return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
 
 # =============================
-# START (FUNIL INICIO)
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("👀 Ver prévia", callback_data="previa")],
-        [InlineKeyboardButton("🔒 Conteúdo VIP", callback_data="vip")],
-        [InlineKeyboardButton("💰 Liberar acesso", callback_data="comprar")]
+        [InlineKeyboardButton("🔒 VIP", callback_data="vip")],
+        [InlineKeyboardButton("💰 1 DIA", callback_data="1d")],
+        [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
+        [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
     ]
 
     await update.message.reply_text(
-        """😈 Oi amor...
-
-Você acabou de encontrar meu cantinho secreto 🔥
-
-Aqui eu mostro coisas que ninguém mais vê...
-sem censura 😏
-
-👇 escolhe o que você quer ver:""",
+        "🔞😈 Oii... tava te esperando 👀🔥\n\n"
+        "Preparei um conteúdo que não posto em lugar nenhum... 🤫\n\n"
+        "Só quem entra aqui vê... 💋\n\n"
+        "⚠️ Conteúdo +18 proibido ⚠️\n\n"
+        "👇 Escolhe o que você quer ver:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -117,85 +117,58 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # PRÉVIA
+    # PREVIA
     if query.data == "previa":
         await query.message.reply_text(
-            """👀 Só um gostinho...
-
-Você acha mesmo que eu ia mostrar tudo de graça? 😈
-
-O melhor tá guardado pra quem sabe aproveitar 🔥"""
+            "👀🔥 Só pra você sentir o gostinho...\n\n"
+            "😈 Isso aqui não é nem 10% do que tem lá dentro...\n\n"
+            "💋 O resto tá no VIP 🔒🔥"
         )
 
     # VIP
     elif query.data == "vip":
         if is_vip(user_id):
             await query.message.reply_text(
-                """🔥 Agora sim...
-
-Você foi liberado 😈
-
-Aproveita bem... porque aqui dentro eu não me seguro 💋"""
+                "🔓🔥 Agora sim...\n\n"
+                "😈 Você tem acesso total...\n\n"
+                "💋 Aproveita... mas não mostra pra ninguém 👀"
             )
         else:
-            keyboard = [
-                [InlineKeyboardButton("💰 1 DIA", callback_data="1d")],
-                [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
-                [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
-            ]
-
             await query.message.reply_text(
-                """🔒 Calma...
-
-Esse conteúdo é só pra quem já desbloqueou 😏
-
-🔥 Lá dentro tem:
-- vídeos completos
-- conteúdos sem censura
-- coisas que eu não posto em lugar nenhum...
-
-💸 Quer entrar?""",
-                reply_markup=InlineKeyboardMarkup(keyboard)
+                "🔞🔒 Calma... você quase chegou lá 😈🔥\n\n"
+                "O conteúdo completo tá no VIP 💋\n\n"
+                "Lá tem:\n"
+                "🔥 fotos exclusivas\n"
+                "🎥 vídeos proibidos +18\n"
+                "💦 conteúdo liberado todos os dias\n\n"
+                "⚠️ Acesso limitado ⚠️\n\n"
+                "👇 Escolhe um plano e entra:"
             )
-
-    # BOTÃO COMPRAR DIRETO
-    elif query.data == "comprar":
-        keyboard = [
-            [InlineKeyboardButton("💰 1 DIA - Acesso rápido", callback_data="1d")],
-            [InlineKeyboardButton("🔥 7 DIAS - Mais popular", callback_data="7d")],
-            [InlineKeyboardButton("👑 15 DIAS - VIP total", callback_data="15d")]
-        ]
-
-        await query.message.reply_text(
-            "💸 Escolhe seu plano:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
 
     # PLANOS
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            f"💰 Pague aqui:\n{link}"
+            "💰🔥 Último passo...\n\n"
+            "⚡ Pagou = acesso liberado automaticamente 😈\n\n"
+            f"👇 Finaliza aqui:\n{link}"
         )
-
-bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
 # WEBHOOK TELEGRAM
 # =============================
-
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, bot_app.bot)
 
-    loop.run_until_complete(bot_app.initialize())
-    loop.run_until_complete(bot_app.process_update(update))
+    async def run():
+        await bot_app.initialize()
+        await bot_app.process_update(update)
+
+    asyncio.run(run())
 
     return "ok", 200
 
@@ -237,14 +210,6 @@ def mp():
         print("ERRO MP:", e)
 
     return "ok", 200
-
-# =============================
-# HOME
-# =============================
-
-@app.route("/", methods=["GET"])
-def home():
-    return "BOT ONLINE", 200
 
 # =============================
 # SET WEBHOOK
