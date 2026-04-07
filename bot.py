@@ -28,9 +28,9 @@ VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 # =============================
 
 PLANOS = {
-    "1d": {"dias": 1, "preco": 8,99},
-    "7d": {"dias": 7, "preco": 14,99},
-    "15d": {"dias": 15, "preco": 22,99}
+    "1d": {"dias": 1, "preco": 8.99},
+    "7d": {"dias": 7, "preco": 14.99},
+    "15d": {"dias": 15, "preco": 22.99}
 }
 
 # =============================
