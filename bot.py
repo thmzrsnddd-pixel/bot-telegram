@@ -24,20 +24,23 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
 # =============================
-# TEXTOS
+# TEXTOS (PERSONAGEM TIMIDA)
 # =============================
 
 TEXTOS = {
     "start": "🔞😈 Oii... tava te esperando 👀🔥\n\n"
-             "Preparei um conteúdo que não posto em lugar nenhum... 🤫\n\n"
-             "Só quem entra aqui vê... 💋\n\n"
-             "👇 Escolhe o que você quer ver:",
+             "🙈 não era pra você ter chegado aqui...\n\n"
+             "💋 mas já que chegou...\n"
+             "tem coisas minhas que eu nunca postei em lugar nenhum...\n\n"
+             "👇 escolhe aí...",
 
-    "vip_nao": "🔞🔒 você tá quase lá...\n\n"
-               "💋 lá dentro tem coisas que eu nunca mostrei...\n\n"
-               "👇 escolhe um plano:",
+    "vip": "🙈 você chegou perto...\n\n"
+           "💋 lá dentro tem coisas que eu fico até com vergonha...\n\n"
+           "👇 escolhe um plano...",
 
-    "pagamento": "💰🔥 Último passo...\n\n👇 Finaliza aqui:"
+    "pagamento": "💰💋 só falta isso...\n\n"
+                 "🙈 depois eu te mostro tudo...\n\n"
+                 "👇 paga aqui:"
 }
 
 # =============================
@@ -97,6 +100,34 @@ def criar_pagamento(user_id, plano):
     return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
 
 # =============================
+# MIDIAS (DEIXA VAZIO POR ENQUANTO)
+# =============================
+
+MIDIAS = [
+    # EXEMPLO FUTURO:
+    # {"tipo": "foto", "url": "LINK", "texto": "🙈 olha isso..."}
+]
+
+def enviar_midias(user_id):
+    for m in MIDIAS:
+        try:
+            if m["tipo"] == "foto":
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={
+                    "chat_id": user_id,
+                    "photo": m["url"],
+                    "caption": m["texto"]
+                })
+            elif m["tipo"] == "video":
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={
+                    "chat_id": user_id,
+                    "video": m["url"],
+                    "caption": m["texto"]
+                })
+            time.sleep(2)
+        except:
+            pass
+
+# =============================
 # REENGAJAMENTO
 # =============================
 
@@ -104,13 +135,15 @@ def reengajar(user_id):
 
     def fluxo():
         time.sleep(600)
+
         if not is_vip(user_id):
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={
                 "chat_id": user_id,
-                "text": "👀 você ainda tá aí...?\n\n🙈 fiquei meio sem graça agora...\n\n💋 posso te mostrar mais..."
+                "text": "👀 você ainda tá aí...?\n\n🙈 fiquei meio sem graça...\n\n💋 posso te mostrar mais..."
             })
 
         time.sleep(3000)
+
         if not is_vip(user_id):
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={
                 "chat_id": user_id,
@@ -118,15 +151,17 @@ def reengajar(user_id):
             })
 
         time.sleep(18000)
+
         if not is_vip(user_id):
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={
                 "chat_id": user_id,
-                "text": "💔 achei que você ia voltar...\n\n🙈 eu tinha separado umas coisas..."
+                "text": "💔 achei que você esqueceu de mim...\n\n🙈 eu tinha separado umas coisas..."
             })
 
-        # ISCA R$5
+        # OFERTA R$5
         if not is_vip(user_id):
             link = criar_pagamento(user_id, "promo")
+
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={
                 "chat_id": user_id,
                 "text": f"🤫 só pra você...\n\n💋 consigo liberar por R$5 agora...\n\n👇 {link}"
@@ -157,6 +192,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "vip":
         if not is_vip(user_id):
+
             keyboard = [
                 [InlineKeyboardButton("🚀 ACESSO IMEDIATO", callback_data="7d")],
                 [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
@@ -164,7 +200,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("💰 1 DIA", callback_data="1d")]
             ]
 
-            await query.message.reply_text(TEXTOS["vip_nao"], reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.message.reply_text(TEXTOS["vip"], reply_markup=InlineKeyboardMarkup(keyboard))
 
             reengajar(user_id)
 
@@ -215,8 +251,10 @@ def mp():
 
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={"chat_id": user_id, "text": f"🔥 VIP liberado por {dias} dias!"}
+                json={"chat_id": user_id, "text": f"💋 pronto...\n\n🙈 agora você tá dentro..."}
             )
+
+            enviar_midias(user_id)
 
     return "ok"
 
