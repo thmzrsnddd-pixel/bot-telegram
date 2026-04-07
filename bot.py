@@ -4,12 +4,15 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
-    ContextTypes
+    MessageHandler,
+    ContextTypes,
+    filters
 )
 
 import asyncio
 import requests
 import time
+import random
 
 # =============================
 # CONFIG
@@ -21,6 +24,30 @@ MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
+
+# =============================
+# DIGITANDO
+# =============================
+
+def digitando(chat_id, tempo=2):
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendChatAction",
+        json={"chat_id": chat_id, "action": "typing"}
+    )
+    time.sleep(tempo)
+
+# =============================
+# MENSAGEM QUEBRADA
+# =============================
+
+def mensagem_quebrada(chat_id, mensagens):
+    for msg in mensagens:
+        digitando(chat_id, random.randint(2,4))
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            json={"chat_id": chat_id, "text": msg}
+        )
+        time.sleep(random.randint(1,2))
 
 # =============================
 # PLANOS
@@ -43,12 +70,14 @@ MIDIAS_VIP = [
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBX2nVAAHAXPd6uwjw7pDhicxr3YTsUwACGwxrG6ZgqUaPWpNpw3MxMAEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBYGnVAAHAbnPgUhD1y1LTKG71eWe53AACHAxrG6ZgqUZMfSFoc5X4AQEAAwIAA3kAAzsE"},
     {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
-    {"tipo": "video", "id": "BAACAgEAAxkBAAIBY2nVAAHAYPdq3KsobU8gX9sl2dp2GwAC7AcAAqZgqUYDC8pyBIDwsDsE"},
-    {"tipo": "video", "id": "BAACAgEAAxkBAAIBZGnVAAHAO7O3Vtsh6t7BzFAgCgkX7QAC9gcAAqZgqUaNNQWAeadz-DsE"},
 ]
+
+# =============================
+# CONTROLE
+# =============================
+
+pagamentos_processados = set()
 
 # =============================
 # PAGAMENTO
@@ -57,28 +86,39 @@ MIDIAS_VIP = [
 def criar_pagamento(user_id, plano):
     plano_info = PLANOS[plano]
 
-    url = "https://api.mercadopago.com/v1/payments"
+    r = requests.post(
+        "https://api.mercadopago.com/v1/payments",
+        json={
+            "transaction_amount": plano_info["preco"],
+            "description": f"Plano {plano}",
+            "payment_method_id": "pix",
+            "payer": {"email": "teste@test.com"},
+            "external_reference": f"{user_id}|{plano}"
+        },
+        headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+    ).json()
 
-    payload = {
-        "transaction_amount": plano_info["preco"],
-        "description": f"Plano {plano}",
-        "payment_method_id": "pix",
-        "payer": {"email": "teste@test.com"},
-        "external_reference": f"{user_id}|{plano}"
-    }
+    pix = r.get("point_of_interaction", {}).get("transaction_data", {})
 
-    headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-
-    r = requests.post(url, json=payload, headers=headers)
-    data = r.json()
-
-    return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
+    return pix.get("ticket_url"), pix.get("qr_code")
 
 # =============================
-# START
+# START COM ORIGEM (TRÁFEGO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.message.chat_id
+    origem = context.args[0] if context.args else "normal"
+
+    if origem == "tiktok":
+        texto = "🙈 você veio do tiktok..."
+    elif origem == "insta":
+        texto = "💋 veio do insta né..."
+    elif origem == "promo":
+        texto = "🔥 você pegou a promoção..."
+    else:
+        texto = "oi... 🙈"
 
     keyboard = [
         [InlineKeyboardButton("🔒 ACESSAR VIP", callback_data="vip")]
@@ -86,15 +126,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption=(
-            "🔞😈 Oii... tava te esperando 👀🔥\n\n"
-            "🙈 não era pra você ter chegado aqui...\n\n"
-            "💋 mas já que chegou...\n"
-            "tem coisas minhas que eu nunca mostrei...\n\n"
-            "👇 toca aqui..."
-        ),
+        caption=texto,
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+    mensagem_quebrada(user_id, [
+        "não sei se devia falar com você...",
+        "🙈 fiquei curiosa..."
+    ])
 
 # =============================
 # BOTÕES
@@ -108,6 +147,12 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "vip":
 
+        mensagem_quebrada(user_id, [
+            "🙈 você veio até aqui...",
+            "💋 fico com vergonha...",
+            "escolhe um plano..."
+        ])
+
         keyboard = [
             [InlineKeyboardButton("💰 1 DIA - R$5", callback_data="1d")],
             [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
@@ -116,41 +161,83 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_video(
             video=VIDEO_VIP,
-            caption=(
-                "🙈 você chegou longe...\n\n"
-                "💋 isso aqui é só uma parte...\n\n"
-                "👇 escolhe um plano..."
-            ),
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
 
-        link = criar_pagamento(user_id, query.data)
+        link, copia = criar_pagamento(user_id, query.data)
 
-        await query.message.reply_text(
-            f"💰 Finaliza aqui:\n{link}"
-        )
+        mensagem_quebrada(user_id, [
+            "💰 último passo...",
+            "é rapidinho...",
+            "libera na hora..."
+        ])
+
+        await query.message.reply_text(f"{link}\n\n{copia}")
 
 # =============================
-# ENVIAR MIDIAS
+# RESPOSTAS
+# =============================
+
+async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.message.chat_id
+    texto = update.message.text.lower()
+
+    if "oi" in texto:
+
+        mensagem_quebrada(user_id, [
+            "oi... 🙈",
+            "você voltou...",
+            "💋 tava pensando em você..."
+        ])
+
+    elif "quero" in texto:
+
+        mensagem_quebrada(user_id, [
+            "😳 você quer mesmo...?",
+            "não sei se devia...",
+            "🙈 você me deixa nervosa..."
+        ])
+
+    else:
+
+        mensagem_quebrada(user_id, [
+            "🙈 você fala assim...",
+            "💋 fico sem reação...",
+            "😳 sério..."
+        ])
+
+# =============================
+# ENTREGA
 # =============================
 
 def enviar_midias(chat_id):
+
+    mensagem_quebrada(chat_id, [
+        "🙈 tá bom...",
+        "vou te mostrar...",
+        "💋 mas não espalha..."
+    ])
+
     for midia in MIDIAS_VIP:
+
+        digitando(chat_id, random.randint(2,4))
+
         if midia["tipo"] == "foto":
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
                 json={"chat_id": chat_id, "photo": midia["id"]}
             )
-        elif midia["tipo"] == "video":
+        else:
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                 json={"chat_id": chat_id, "video": midia["id"]}
             )
 
 # =============================
-# WEBHOOK MERCADO PAGO
+# WEBHOOK MP
 # =============================
 
 @app.route("/mp", methods=["POST"])
@@ -159,30 +246,25 @@ def mp():
 
     try:
         if data.get("type") == "payment":
+
             payment_id = data["data"]["id"]
 
-            url = f"https://api.mercadopago.com/v1/payments/{payment_id}"
-            headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+            if payment_id in pagamentos_processados:
+                return "ok", 200
 
-            r = requests.get(url, headers=headers)
-            pagamento = r.json()
+            pagamentos_processados.add(payment_id)
+
+            pagamento = requests.get(
+                f"https://api.mercadopago.com/v1/payments/{payment_id}",
+                headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+            ).json()
 
             if pagamento["status"] == "approved":
-                ref = pagamento["external_reference"]
-                user_id, plano = ref.split("|")
-
+                user_id, plano = pagamento["external_reference"].split("|")
                 enviar_midias(user_id)
 
-                requests.post(
-                    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                    json={
-                        "chat_id": user_id,
-                        "text": "🔓 acesso liberado..."
-                    }
-                )
-
     except Exception as e:
-        print("ERRO MP:", e)
+        print("ERRO:", e)
 
     return "ok", 200
 
@@ -212,9 +294,10 @@ def home():
 
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder))
 
 # =============================
-# SET WEBHOOK
+# WEBHOOK
 # =============================
 
 def set_webhook():
@@ -233,4 +316,3 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-    
