@@ -12,15 +12,14 @@ from telegram.ext import (
 import asyncio
 import requests
 import time
-import random
 
 # =============================
 # CONFIG
 # =============================
 
-TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
-PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
-MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
+TOKEN = "SEU_TOKEN_AQUI"
+PUBLIC_URL = "https://seu-app.onrender.com"
+MP_ACCESS_TOKEN = "SEU_MP_TOKEN"
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
@@ -41,28 +40,27 @@ def digitando(chat_id, tempo=2):
 # =============================
 
 PLANOS = {
-    "isca": {"dias": 0, "preco": 5.00},
-    "1d": {"dias": 1, "preco": 7.00},
-    "7d": {"dias": 7, "preco": 14.99},
-    "15d": {"dias": 15, "preco": 22.99},
-    "pack": {"dias": 999, "preco": 10.99}
+    "isca": {"dias": 0, "preco": 5.00, "nome": "🔥 TESTE VIP"},
+    "1d": {"dias": 1, "preco": 7.00, "nome": "💰 1 DIA VIP"},
+    "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
+    "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
+    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 BIBLIOTECA COMPLETA"}
 }
 
 # =============================
 # MIDIAS
 # =============================
 
-FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
-VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
+FOTO_START = "SUA_FOTO_ID"
+VIDEO_VIP = "SEU_VIDEO_ID"
 
 MIDIAS_VIP = [
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
-    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
+    {"tipo": "foto", "id": "ID1"},
+    {"tipo": "foto", "id": "ID2"},
+    {"tipo": "video", "id": "ID3"},
 ]
 
-# PACK COMPLETO (biblioteca)
-PACK_COMPLETO = MIDIAS_VIP  # pode adicionar mais depois
+PACK_COMPLETO = MIDIAS_VIP
 
 # =============================
 # CONTROLE
@@ -86,7 +84,7 @@ def criar_pagamento(user_id, plano):
         json={
             "items": [
                 {
-                    "title": f"Plano {plano}",
+                    "title": plano_info["nome"],
                     "quantity": 1,
                     "currency_id": "BRL",
                     "unit_price": plano_info["preco"]
@@ -103,23 +101,22 @@ def criar_pagamento(user_id, plano):
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     user_id = update.message.chat_id
 
     keyboard = [
-        [InlineKeyboardButton("🔒 ACESSAR VIP", callback_data="vip")]
+        [InlineKeyboardButton("🔒 ENTRAR NO VIP", callback_data="vip")]
     ]
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oi... eu não sei se devia te responder aqui...\n\nfiquei meio sem graça 😳",
+        caption="oi... não sei se devia te responder aqui 😳\n\nfiquei meio sem graça...",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-    digitando(user_id, 3)
+    digitando(user_id, 2)
 
     await update.message.reply_text(
-        "🙈 normalmente não faço isso...\n\nmas você parece diferente...\n\n💋 então vou te mostrar um pouco..."
+        "🙈 normalmente não faço isso...\n\nmas você chamou minha atenção...\n\n💋 posso te mostrar um pouco..."
     )
 
 # =============================
@@ -139,14 +136,14 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("🔥 TESTE R$5", callback_data="isca")],
             [InlineKeyboardButton("💰 1 DIA R$7", callback_data="1d")],
-            [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
-            [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")],
-            [InlineKeyboardButton("📦 ACESSO BIBLIOTECA 10,99", callback_data="pack")]
+            [InlineKeyboardButton("🔥 7 DIAS R$14,99", callback_data="7d")],
+            [InlineKeyboardButton("👑 15 DIAS R$22,99", callback_data="15d")],
+            [InlineKeyboardButton("📦 PACK COMPLETO R$10,99", callback_data="pack")]
         ]
 
         await query.message.reply_video(
             video=VIDEO_VIP,
-            caption="🙈 aqui já é mais pessoal...\n\nescolhe com calma...",
+            caption="😈 aqui já é mais pessoal...\n\nescolhe como quer me ver...",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
@@ -157,13 +154,13 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            "💰 último passo...\n\n"
-            f"{link}\n\n"
-            "assim que pagar eu te libero 😳"
+            f"💰 {PLANOS[query.data]['nome']}\n\n"
+            f"👉 {link}\n\n"
+            "assim que confirmar eu te libero 😳"
         )
 
 # =============================
-# RESPOSTAS
+# RESPOSTAS AUTOMÁTICAS
 # =============================
 
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -171,7 +168,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     digitando(user_id, 1)
 
     await update.message.reply_text(
-        "🙈 você me deixa sem jeito...\n\n💋 mas continua..."
+        "🙈 você me deixa sem jeito...\n\nmas continua falando comigo..."
     )
 
 # =============================
@@ -180,11 +177,13 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def enviar_vip(chat_id):
 
+    chat_id = int(chat_id)
+
     digitando(chat_id, 2)
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "🙈 ok... vou liberar um pouco..."}
+        json={"chat_id": chat_id, "text": "😈 vou liberar um pouco pra você..."}
     )
 
     for midia in MIDIAS_VIP:
@@ -199,11 +198,13 @@ def enviar_vip(chat_id):
 
 def enviar_pack(chat_id):
 
+    chat_id = int(chat_id)
+
     digitando(chat_id, 2)
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "📦 liberando biblioteca completa..."}
+        json={"chat_id": chat_id, "text": "📦 liberando biblioteca completa... aproveita 😈"}
     )
 
     for midia in PACK_COMPLETO:
@@ -238,6 +239,7 @@ def mp():
             if pagamento["status"] == "approved":
 
                 user_id, plano = pagamento["external_reference"].split("|")
+                user_id = int(user_id)
 
                 if plano == "pack":
                     enviar_pack(user_id)
