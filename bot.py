@@ -66,34 +66,37 @@ MIDIAS_VIP = [
 pagamentos_processados = set()
 
 # =============================
-# PAGAMENTO (CORRIGIDO)
+# PAGAMENTO (CORRIGIDO 100%)
 # =============================
 
 def criar_pagamento(user_id, plano):
     plano_info = PLANOS[plano]
 
     r = requests.post(
-        "https://api.mercadopago.com/v1/payments",
-        json={
-            "transaction_amount": plano_info["preco"],
-            "description": f"Plano {plano}",
-            "payment_method_id": "pix",
-            "payer": {"email": "teste@test.com"},
-            "external_reference": f"{user_id}|{plano}"
+        "https://api.mercadopago.com/checkout/preferences",
+        headers={
+            "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
         },
-        headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+        json={
+            "items": [
+                {
+                    "title": f"Plano {plano}",
+                    "quantity": 1,
+                    "currency_id": "BRL",
+                    "unit_price": plano_info["preco"]
+                }
+            ],
+            "external_reference": f"{user_id}|{plano}"
+        }
     )
 
     data = r.json()
 
-    try:
-        qr = data["point_of_interaction"]["transaction_data"]["qr_code"]
-        return qr
-    except:
-        return "Erro ao gerar pagamento, tente novamente."
+    return data.get("init_point", "Erro ao gerar pagamento")
 
 # =============================
-# START (TRÁFEGO)
+# START MELHORADO
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -105,8 +108,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto = "🙈 você veio do tiktok..."
     elif origem == "insta":
         texto = "💋 veio do insta né..."
-    elif origem == "promo":
-        texto = "🔥 você pegou a promoção..."
     else:
         texto = "oi... 🙈"
 
@@ -120,10 +121,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-    digitando(user_id, 2)
+    digitando(user_id, 3)
 
     await update.message.reply_text(
-        "não sei se devia falar com você... 🙈\nmas fiquei curiosa..."
+        "eu fiquei meio sem saber se devia responder...\n\n"
+        "🙈 normalmente não falo com qualquer um aqui...\n\n"
+        "mas você parece diferente...\n\n"
+        "💋 então resolvi te dar um pouco de atenção..."
     )
 
 # =============================
@@ -141,7 +145,9 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         digitando(user_id, 2)
 
         await query.message.reply_text(
-            "🙈 você veio até aqui...\n💋 fico com vergonha...\nescolhe um plano..."
+            "🙈 você realmente quer entrar...\n\n"
+            "lá dentro eu posto coisas que não vão pra lugar nenhum...\n\n"
+            "💋 é tudo bem mais pessoal..."
         )
 
         keyboard = [
@@ -159,10 +165,13 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         digitando(user_id, 2)
 
-        pix = criar_pagamento(user_id, query.data)
+        link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            f"💰 último passo...\n\ncopia e cola no seu banco 👇\n\n{pix}"
+            "💰 último passo...\n\n"
+            "é bem rápido...\n\n"
+            "👇 entra aqui:\n\n"
+            f"{link}"
         )
 
 # =============================
@@ -178,11 +187,14 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if "oi" in texto:
         await update.message.reply_text(
-            "oi... 🙈\nvocê voltou...\n💋 tava pensando em você..."
+            "oi... 🙈\n\n"
+            "você voltou...\n\n"
+            "💋 tava pensando em você..."
         )
     else:
         await update.message.reply_text(
-            "🙈 você fala assim...\n💋 fico sem reação..."
+            "🙈 você fala assim...\n\n"
+            "💋 eu fico sem reação..."
         )
 
 # =============================
@@ -195,7 +207,10 @@ def enviar_midias(chat_id):
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "🙈 tá bom...\nvou te mostrar..."}
+        json={
+            "chat_id": chat_id,
+            "text": "🙈 tá bom...\n\nvou te mostrar...\n\n💋 mas fica só pra você..."
+        }
     )
 
     for midia in MIDIAS_VIP:
