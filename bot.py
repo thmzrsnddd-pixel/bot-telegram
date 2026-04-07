@@ -37,19 +37,6 @@ def digitando(chat_id, tempo=2):
     time.sleep(tempo)
 
 # =============================
-# MENSAGEM QUEBRADA
-# =============================
-
-def mensagem_quebrada(chat_id, mensagens):
-    for msg in mensagens:
-        digitando(chat_id, random.randint(2,4))
-        requests.post(
-            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-            json={"chat_id": chat_id, "text": msg}
-        )
-        time.sleep(random.randint(1,2))
-
-# =============================
 # PLANOS
 # =============================
 
@@ -69,7 +56,6 @@ VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1c
 MIDIAS_VIP = [
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"},
     {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
 ]
 
@@ -80,7 +66,7 @@ MIDIAS_VIP = [
 pagamentos_processados = set()
 
 # =============================
-# PAGAMENTO
+# PAGAMENTO (CORRIGIDO)
 # =============================
 
 def criar_pagamento(user_id, plano):
@@ -96,14 +82,18 @@ def criar_pagamento(user_id, plano):
             "external_reference": f"{user_id}|{plano}"
         },
         headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-    ).json()
+    )
 
-    pix = r.get("point_of_interaction", {}).get("transaction_data", {})
+    data = r.json()
 
-    return pix.get("ticket_url"), pix.get("qr_code")
+    try:
+        qr = data["point_of_interaction"]["transaction_data"]["qr_code"]
+        return qr
+    except:
+        return "Erro ao gerar pagamento, tente novamente."
 
 # =============================
-# START COM ORIGEM (TRÁFEGO)
+# START (TRÁFEGO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -130,10 +120,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-    mensagem_quebrada(user_id, [
-        "não sei se devia falar com você...",
-        "🙈 fiquei curiosa..."
-    ])
+    digitando(user_id, 2)
+
+    await update.message.reply_text(
+        "não sei se devia falar com você... 🙈\nmas fiquei curiosa..."
+    )
 
 # =============================
 # BOTÕES
@@ -147,11 +138,11 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "vip":
 
-        mensagem_quebrada(user_id, [
-            "🙈 você veio até aqui...",
-            "💋 fico com vergonha...",
-            "escolhe um plano..."
-        ])
+        digitando(user_id, 2)
+
+        await query.message.reply_text(
+            "🙈 você veio até aqui...\n💋 fico com vergonha...\nescolhe um plano..."
+        )
 
         keyboard = [
             [InlineKeyboardButton("💰 1 DIA - R$5", callback_data="1d")],
@@ -166,15 +157,13 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data in PLANOS:
 
-        link, copia = criar_pagamento(user_id, query.data)
+        digitando(user_id, 2)
 
-        mensagem_quebrada(user_id, [
-            "💰 último passo...",
-            "é rapidinho...",
-            "libera na hora..."
-        ])
+        pix = criar_pagamento(user_id, query.data)
 
-        await query.message.reply_text(f"{link}\n\n{copia}")
+        await query.message.reply_text(
+            f"💰 último passo...\n\ncopia e cola no seu banco 👇\n\n{pix}"
+        )
 
 # =============================
 # RESPOSTAS
@@ -185,29 +174,16 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
     texto = update.message.text.lower()
 
+    digitando(user_id, random.randint(1,2))
+
     if "oi" in texto:
-
-        mensagem_quebrada(user_id, [
-            "oi... 🙈",
-            "você voltou...",
-            "💋 tava pensando em você..."
-        ])
-
-    elif "quero" in texto:
-
-        mensagem_quebrada(user_id, [
-            "😳 você quer mesmo...?",
-            "não sei se devia...",
-            "🙈 você me deixa nervosa..."
-        ])
-
+        await update.message.reply_text(
+            "oi... 🙈\nvocê voltou...\n💋 tava pensando em você..."
+        )
     else:
-
-        mensagem_quebrada(user_id, [
-            "🙈 você fala assim...",
-            "💋 fico sem reação...",
-            "😳 sério..."
-        ])
+        await update.message.reply_text(
+            "🙈 você fala assim...\n💋 fico sem reação..."
+        )
 
 # =============================
 # ENTREGA
@@ -215,15 +191,16 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def enviar_midias(chat_id):
 
-    mensagem_quebrada(chat_id, [
-        "🙈 tá bom...",
-        "vou te mostrar...",
-        "💋 mas não espalha..."
-    ])
+    digitando(chat_id, 2)
+
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": chat_id, "text": "🙈 tá bom...\nvou te mostrar..."}
+    )
 
     for midia in MIDIAS_VIP:
 
-        digitando(chat_id, random.randint(2,4))
+        digitando(chat_id, 2)
 
         if midia["tipo"] == "foto":
             requests.post(
