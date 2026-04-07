@@ -149,7 +149,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oi... 😳",
+        caption="oii amoor!! 🤭🤭",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
