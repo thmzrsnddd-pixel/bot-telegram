@@ -41,9 +41,11 @@ def digitando(chat_id, tempo=2):
 # =============================
 
 PLANOS = {
-    "1d": {"dias": 1, "preco": 5.00},
+    "isca": {"dias": 0, "preco": 5.00},
+    "1d": {"dias": 1, "preco": 7.00},
     "7d": {"dias": 7, "preco": 14.99},
-    "15d": {"dias": 15, "preco": 22.99}
+    "15d": {"dias": 15, "preco": 22.99},
+    "pack": {"dias": 999, "preco": 10.99}
 }
 
 # =============================
@@ -59,6 +61,9 @@ MIDIAS_VIP = [
     {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
 ]
 
+# PACK COMPLETO (biblioteca)
+PACK_COMPLETO = MIDIAS_VIP  # pode adicionar mais depois
+
 # =============================
 # CONTROLE
 # =============================
@@ -66,7 +71,7 @@ MIDIAS_VIP = [
 pagamentos_processados = set()
 
 # =============================
-# PAGAMENTO (CORRIGIDO 100%)
+# PAGAMENTO
 # =============================
 
 def criar_pagamento(user_id, plano):
@@ -91,25 +96,15 @@ def criar_pagamento(user_id, plano):
         }
     )
 
-    data = r.json()
-
-    return data.get("init_point", "Erro ao gerar pagamento")
+    return r.json().get("init_point", "Erro ao gerar pagamento")
 
 # =============================
-# START MELHORADO
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.message.chat_id
-    origem = context.args[0] if context.args else "normal"
-
-    if origem == "tiktok":
-        texto = "🙈 você veio do tiktok..."
-    elif origem == "insta":
-        texto = "💋 veio do insta né..."
-    else:
-        texto = "oi... 🙈"
 
     keyboard = [
         [InlineKeyboardButton("🔒 ACESSAR VIP", callback_data="vip")]
@@ -117,17 +112,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption=texto,
+        caption="oi... eu não sei se devia te responder aqui...\n\nfiquei meio sem graça 😳",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
     digitando(user_id, 3)
 
     await update.message.reply_text(
-        "eu fiquei meio sem saber se devia responder...\n\n"
-        "🙈 normalmente não falo com qualquer um aqui...\n\n"
-        "mas você parece diferente...\n\n"
-        "💋 então resolvi te dar um pouco de atenção..."
+        "🙈 normalmente não faço isso...\n\nmas você parece diferente...\n\n💋 então vou te mostrar um pouco..."
     )
 
 # =============================
@@ -144,20 +136,17 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         digitando(user_id, 2)
 
-        await query.message.reply_text(
-            "🙈 você realmente quer entrar...\n\n"
-            "lá dentro eu posto coisas que não vão pra lugar nenhum...\n\n"
-            "💋 é tudo bem mais pessoal..."
-        )
-
         keyboard = [
-            [InlineKeyboardButton("💰 1 DIA - R$5", callback_data="1d")],
+            [InlineKeyboardButton("🔥 TESTE R$5", callback_data="isca")],
+            [InlineKeyboardButton("💰 1 DIA R$7", callback_data="1d")],
             [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
-            [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")]
+            [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")],
+            [InlineKeyboardButton("📦 ACESSO BIBLIOTECA 10,99", callback_data="pack")]
         ]
 
         await query.message.reply_video(
             video=VIDEO_VIP,
+            caption="🙈 aqui já é mais pessoal...\n\nescolhe com calma...",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
@@ -169,9 +158,8 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_text(
             "💰 último passo...\n\n"
-            "é bem rápido...\n\n"
-            "👇 entra aqui:\n\n"
-            f"{link}"
+            f"{link}\n\n"
+            "assim que pagar eu te libero 😳"
         )
 
 # =============================
@@ -179,54 +167,50 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =============================
 
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     user_id = update.message.chat_id
-    texto = update.message.text.lower()
+    digitando(user_id, 1)
 
-    digitando(user_id, random.randint(1,2))
-
-    if "oi" in texto:
-        await update.message.reply_text(
-            "oi... 🙈\n\n"
-            "você voltou...\n\n"
-            "💋 tava pensando em você..."
-        )
-    else:
-        await update.message.reply_text(
-            "🙈 você fala assim...\n\n"
-            "💋 eu fico sem reação..."
-        )
+    await update.message.reply_text(
+        "🙈 você me deixa sem jeito...\n\n💋 mas continua..."
+    )
 
 # =============================
-# ENTREGA
+# ENTREGA VIP
 # =============================
 
-def enviar_midias(chat_id):
+def enviar_vip(chat_id):
 
     digitando(chat_id, 2)
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": "🙈 tá bom...\n\nvou te mostrar...\n\n💋 mas fica só pra você..."
-        }
+        json={"chat_id": chat_id, "text": "🙈 ok... vou liberar um pouco..."}
     )
 
     for midia in MIDIAS_VIP:
-
-        digitando(chat_id, 2)
-
         if midia["tipo"] == "foto":
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                json={"chat_id": chat_id, "photo": midia["id"]}
-            )
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": midia["id"]})
         else:
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                json={"chat_id": chat_id, "video": midia["id"]}
-            )
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": midia["id"]})
+
+# =============================
+# ENTREGA PACK
+# =============================
+
+def enviar_pack(chat_id):
+
+    digitando(chat_id, 2)
+
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": chat_id, "text": "📦 liberando biblioteca completa..."}
+    )
+
+    for midia in PACK_COMPLETO:
+        if midia["tipo"] == "foto":
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": midia["id"]})
+        else:
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": midia["id"]})
 
 # =============================
 # WEBHOOK MP
@@ -252,8 +236,13 @@ def mp():
             ).json()
 
             if pagamento["status"] == "approved":
+
                 user_id, plano = pagamento["external_reference"].split("|")
-                enviar_midias(user_id)
+
+                if plano == "pack":
+                    enviar_pack(user_id)
+                else:
+                    enviar_vip(user_id)
 
     except Exception as e:
         print("ERRO:", e)
