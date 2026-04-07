@@ -12,17 +12,57 @@ from telegram.ext import (
 import asyncio
 import requests
 import time
+import json
+import os
 
 # =============================
 # CONFIG
 # =============================
 
-TOKEN = "SEU_TOKEN_AQUI"
-PUBLIC_URL = "https://seu-app.onrender.com"
-MP_ACCESS_TOKEN = "SEU_MP_TOKEN"
+TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
+PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
+MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
+
+DB_FILE = "usuarios.json"
+
+# =============================
+# BANCO SIMPLES
+# =============================
+
+def carregar_usuarios():
+    if not os.path.exists(DB_FILE):
+        return {}
+    with open(DB_FILE, "r") as f:
+        return json.load(f)
+
+def salvar_usuarios(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f)
+
+def liberar_acesso(user_id, dias):
+    usuarios = carregar_usuarios()
+
+    if dias == 999:
+        usuarios[str(user_id)] = 9999999999
+    else:
+        expira = int(time.time()) + dias * 86400
+        usuarios[str(user_id)] = expira
+
+    salvar_usuarios(usuarios)
+
+def tem_acesso(user_id):
+    usuarios = carregar_usuarios()
+
+    if str(user_id) not in usuarios:
+        return False
+
+    if usuarios[str(user_id)] == 9999999999:
+        return True
+
+    return time.time() < usuarios[str(user_id)]
 
 # =============================
 # DIGITANDO
@@ -51,13 +91,13 @@ PLANOS = {
 # MIDIAS
 # =============================
 
-FOTO_START = "SUA_FOTO_ID"
-VIDEO_VIP = "SEU_VIDEO_ID"
+FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
+VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
 
 MIDIAS_VIP = [
-    {"tipo": "foto", "id": "ID1"},
-    {"tipo": "foto", "id": "ID2"},
-    {"tipo": "video", "id": "ID3"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
 ]
 
 PACK_COMPLETO = MIDIAS_VIP
@@ -109,14 +149,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oi... não sei se devia te responder aqui 😳\n\nfiquei meio sem graça...",
+        caption="oi... 😳",
         reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-    digitando(user_id, 2)
-
-    await update.message.reply_text(
-        "🙈 normalmente não faço isso...\n\nmas você chamou minha atenção...\n\n💋 posso te mostrar um pouco..."
     )
 
 # =============================
@@ -131,8 +165,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "vip":
 
-        digitando(user_id, 2)
-
         keyboard = [
             [InlineKeyboardButton("🔥 TESTE R$5", callback_data="isca")],
             [InlineKeyboardButton("💰 1 DIA R$7", callback_data="1d")],
@@ -143,47 +175,46 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_video(
             video=VIDEO_VIP,
-            caption="😈 aqui já é mais pessoal...\n\nescolhe como quer me ver...",
+            caption="😈 escolha seu acesso:",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
 
-        digitando(user_id, 2)
-
         link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            f"💰 {PLANOS[query.data]['nome']}\n\n"
-            f"👉 {link}\n\n"
-            "assim que confirmar eu te libero 😳"
+            f"{PLANOS[query.data]['nome']}\n\n{link}"
         )
 
 # =============================
-# RESPOSTAS AUTOMÁTICAS
+# BLOQUEIO
 # =============================
 
 async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
-    digitando(user_id, 1)
 
-    await update.message.reply_text(
-        "🙈 você me deixa sem jeito...\n\nmas continua falando comigo..."
-    )
+    if not tem_acesso(user_id):
+        await update.message.reply_text(
+            "🔒 você precisa de acesso VIP...\n\nclique em /start"
+        )
+        return
+
+    await update.message.reply_text("😈 continua...")
 
 # =============================
 # ENTREGA VIP
 # =============================
 
-def enviar_vip(chat_id):
+def enviar_vip(chat_id, plano):
 
     chat_id = int(chat_id)
 
-    digitando(chat_id, 2)
+    liberar_acesso(chat_id, PLANOS[plano]["dias"])
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "😈 vou liberar um pouco pra você..."}
+        json={"chat_id": chat_id, "text": "😈 acesso liberado!"}
     )
 
     for midia in MIDIAS_VIP:
@@ -200,11 +231,11 @@ def enviar_pack(chat_id):
 
     chat_id = int(chat_id)
 
-    digitando(chat_id, 2)
+    liberar_acesso(chat_id, 999)
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "📦 liberando biblioteca completa... aproveita 😈"}
+        json={"chat_id": chat_id, "text": "📦 acesso vitalício liberado!"}
     )
 
     for midia in PACK_COMPLETO:
@@ -244,7 +275,7 @@ def mp():
                 if plano == "pack":
                     enviar_pack(user_id)
                 else:
-                    enviar_vip(user_id)
+                    enviar_vip(user_id, plano)
 
     except Exception as e:
         print("ERRO:", e)
@@ -296,6 +327,5 @@ set_webhook()
 # =============================
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
