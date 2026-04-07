@@ -14,7 +14,6 @@ import time
 
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
-
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
 app = Flask(__name__)
@@ -80,10 +79,51 @@ def criar_pagamento(user_id, plano):
 
     headers = {"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
 
-    r = requests.post(url, json=payload, headers=headers)
-    data = r.json()
+    try:
+        r = requests.post(url, json=payload, headers=headers)
+        data = r.json()
+        return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
+    except:
+        return None
 
-    return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
+# =============================
+# FUNÇÃO DE ENVIO DE MÍDIA
+# =============================
+
+def enviar_midias(user_id):
+    try:
+        # FOTO 1
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+            json={
+                "chat_id": user_id,
+                "photo": "https://SEU_LINK_1.jpg",
+                "caption": "👀 Primeira prévia..."
+            }
+        )
+
+        # VÍDEO 1
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+            json={
+                "chat_id": user_id,
+                "video": "https://SEU_VIDEO_1.mp4",
+                "caption": "🔥 Agora ficou interessante..."
+            }
+        )
+
+        # FOTO 2
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+            json={
+                "chat_id": user_id,
+                "photo": "https://SEU_LINK_2.jpg",
+                "caption": "😈 Só melhora..."
+            }
+        )
+
+    except Exception as e:
+        print("ERRO AO ENVIAR MIDIA:", e)
 
 # =============================
 # START
@@ -117,7 +157,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    # PREVIA
     if query.data == "previa":
         await query.message.reply_text(
             "👀🔥 Só pra você sentir o gostinho...\n\n"
@@ -125,35 +164,28 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💋 O resto tá no VIP 🔒🔥"
         )
 
-    # VIP
     elif query.data == "vip":
         if is_vip(user_id):
             await query.message.reply_text(
                 "🔓🔥 Agora sim...\n\n"
                 "😈 Você tem acesso total...\n\n"
-                "💋 Aproveita... mas não mostra pra ninguém 👀"
+                "💋 Aproveita..."
             )
         else:
             await query.message.reply_text(
-                "🔞🔒 Calma... você quase chegou lá 😈🔥\n\n"
-                "O conteúdo completo tá no VIP 💋\n\n"
-                "Lá tem:\n"
-                "🔥 fotos exclusivas\n"
-                "🎥 vídeos proibidos +18\n"
-                "💦 conteúdo liberado todos os dias\n\n"
-                "⚠️ Acesso limitado ⚠️\n\n"
-                "👇 Escolhe um plano e entra:"
+                "🔞🔒 O conteúdo completo tá no VIP 😈🔥\n\n"
+                "👇 Escolhe um plano:"
             )
 
-    # PLANOS
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
 
-        await query.message.reply_text(
-            "💰🔥 Último passo...\n\n"
-            "⚡ Pagou = acesso liberado automaticamente 😈\n\n"
-            f"👇 Finaliza aqui:\n{link}"
-        )
+        if link:
+            await query.message.reply_text(
+                f"💰 Finaliza aqui:\n{link}"
+            )
+        else:
+            await query.message.reply_text("Erro ao gerar pagamento.")
 
 # =============================
 # WEBHOOK TELEGRAM
@@ -169,7 +201,6 @@ def webhook():
         await bot_app.process_update(update)
 
     asyncio.run(run())
-
     return "ok", 200
 
 # =============================
@@ -198,13 +229,17 @@ def mp():
 
                 liberar_vip(user_id, dias)
 
+                # Mensagem
                 requests.post(
                     f"https://api.telegram.org/bot{TOKEN}/sendMessage",
                     json={
                         "chat_id": user_id,
-                        "text": f"🔥 VIP liberado por {dias} dias!"
+                        "text": f"🔥 VIP liberado por {dias} dias!\n\n😈 Segura isso..."
                     }
                 )
+
+                # 👇 ENVIA AS MÍDIAS
+                enviar_midias(user_id)
 
     except Exception as e:
         print("ERRO MP:", e)
