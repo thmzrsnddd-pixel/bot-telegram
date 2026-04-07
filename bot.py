@@ -27,9 +27,10 @@ app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 DB_FILE = "usuarios.json"
+INTERESSE_FILE = "interesse.json"
 
 # =============================
-# BANCO SIMPLES
+# BANCO USUÁRIOS
 # =============================
 
 def carregar_usuarios():
@@ -63,6 +64,34 @@ def tem_acesso(user_id):
         return True
 
     return time.time() < usuarios[str(user_id)]
+
+# =============================
+# INTERESSE (remarketing)
+# =============================
+
+def salvar_interesse(user_id):
+    data = {}
+    if os.path.exists(INTERESSE_FILE):
+        with open(INTERESSE_FILE, "r") as f:
+            data = json.load(f)
+
+    data[str(user_id)] = int(time.time())
+
+    with open(INTERESSE_FILE, "w") as f:
+        json.dump(data, f)
+
+def remover_interesse(user_id):
+    if not os.path.exists(INTERESSE_FILE):
+        return
+
+    with open(INTERESSE_FILE, "r") as f:
+        data = json.load(f)
+
+    if str(user_id) in data:
+        del data[str(user_id)]
+
+    with open(INTERESSE_FILE, "w") as f:
+        json.dump(data, f)
 
 # =============================
 # DIGITANDO
@@ -102,11 +131,27 @@ MIDIAS_VIP = [
 
 PACK_COMPLETO = MIDIAS_VIP
 
+pagamentos_processados = set()
+
 # =============================
-# CONTROLE
+# REMARKETING AUTOMÁTICO
 # =============================
 
-pagamentos_processados = set()
+async def remarketing(user_id):
+    await asyncio.sleep(120)  # 2 minutos
+
+    if tem_acesso(user_id):
+        return
+
+    link = criar_pagamento(user_id, "isca")
+
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={
+            "chat_id": user_id,
+            "text": f"😳 ei... tava pensando em você...\n\nvou te liberar um teste por R$5\n\n👉 {link}"
+        }
+    )
 
 # =============================
 # PAGAMENTO
@@ -141,15 +186,11 @@ def criar_pagamento(user_id, plano):
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat_id
-
-    keyboard = [
-        [InlineKeyboardButton("🔒 ENTRAR NO VIP", callback_data="vip")]
-    ]
+    keyboard = [[InlineKeyboardButton("🔒 ENTRAR NO VIP", callback_data="vip")]]
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oii amoor!! 🤭🤭",
+        caption="Oii amoor !! 🤭🤭",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -164,6 +205,9 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "vip":
+
+        salvar_interesse(user_id)
+        asyncio.create_task(remarketing(user_id))
 
         keyboard = [
             [InlineKeyboardButton("🔥 TESTE R$5", callback_data="isca")],
@@ -195,9 +239,7 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
 
     if not tem_acesso(user_id):
-        await update.message.reply_text(
-            "🔒 você precisa de acesso VIP...\n\nclique em /start"
-        )
+        await update.message.reply_text("🔒 acesso VIP necessário. /start")
         return
 
     await update.message.reply_text("😈 continua...")
@@ -207,9 +249,9 @@ async def responder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =============================
 
 def enviar_vip(chat_id, plano):
-
     chat_id = int(chat_id)
 
+    remover_interesse(chat_id)
     liberar_acesso(chat_id, PLANOS[plano]["dias"])
 
     requests.post(
@@ -217,32 +259,20 @@ def enviar_vip(chat_id, plano):
         json={"chat_id": chat_id, "text": "😈 acesso liberado!"}
     )
 
-    for midia in MIDIAS_VIP:
-        if midia["tipo"] == "foto":
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": midia["id"]})
-        else:
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": midia["id"]})
-
 # =============================
 # ENTREGA PACK
 # =============================
 
 def enviar_pack(chat_id):
-
     chat_id = int(chat_id)
 
+    remover_interesse(chat_id)
     liberar_acesso(chat_id, 999)
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id, "text": "📦 acesso vitalício liberado!"}
     )
-
-    for midia in PACK_COMPLETO:
-        if midia["tipo"] == "foto":
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": midia["id"]})
-        else:
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": midia["id"]})
 
 # =============================
 # WEBHOOK MP
