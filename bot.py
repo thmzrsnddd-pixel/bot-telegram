@@ -24,12 +24,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VIP_FILE = os.path.join(BASE_DIR, "vip.json")
 
 # =============================
-# TEXTOS (PERSONAGEM TIMIDA)
+# LINKS DAS FOTOS (ALTERA DEPOIS)
+# =============================
+
+FOTO_START = "https://raw.githubusercontent.com/SEUUSER/SEUREPO/main/start.jpg"
+FOTO_VIP = "https://raw.githubusercontent.com/SEUUSER/SEUREPO/main/vip.jpg"
+
+# =============================
+# TEXTOS
 # =============================
 
 TEXTOS = {
     "start": "🔞😈 Oii... tava te esperando 👀🔥\n\n"
-             "🙈 não era pra você ter chegado aqui...\n\n"
+             "🙈 nosso segredo viu amor ?...\n\n"
              "💋 mas já que chegou...\n"
              "tem coisas minhas que eu nunca postei em lugar nenhum...\n\n"
              "👇 escolhe aí...",
@@ -100,13 +107,10 @@ def criar_pagamento(user_id, plano):
     return data.get("point_of_interaction", {}).get("transaction_data", {}).get("ticket_url")
 
 # =============================
-# MIDIAS (DEIXA VAZIO POR ENQUANTO)
+# MIDIAS (DEPOIS VOCÊ COMPLETA)
 # =============================
 
-MIDIAS = [
-    # EXEMPLO FUTURO:
-    # {"tipo": "foto", "url": "LINK", "texto": "🙈 olha isso..."}
-]
+MIDIAS = []
 
 def enviar_midias(user_id):
     for m in MIDIAS:
@@ -158,7 +162,6 @@ def reengajar(user_id):
                 "text": "💔 achei que você esqueceu de mim...\n\n🙈 eu tinha separado umas coisas..."
             })
 
-        # OFERTA R$5
         if not is_vip(user_id):
             link = criar_pagamento(user_id, "promo")
 
@@ -170,7 +173,7 @@ def reengajar(user_id):
     threading.Thread(target=fluxo).start()
 
 # =============================
-# START
+# START COM FOTO
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -178,7 +181,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔒 VIP", callback_data="vip")]
     ]
 
-    await update.message.reply_text(TEXTOS["start"], reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_photo(
+        photo=FOTO_START,
+        caption=TEXTOS["start"],
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 # =============================
 # BOTÕES
@@ -200,7 +207,11 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("💰 1 DIA", callback_data="1d")]
             ]
 
-            await query.message.reply_text(TEXTOS["vip"], reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.message.reply_photo(
+                photo=FOTO_VIP,
+                caption=TEXTOS["vip"],
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
             reengajar(user_id)
 
@@ -251,7 +262,7 @@ def mp():
 
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={"chat_id": user_id, "text": f"💋 pronto...\n\n🙈 agora você tá dentro..."}
+                json={"chat_id": user_id, "text": "💋 pronto...\n\n🙈 agora você tá dentro..."}
             )
 
             enviar_midias(user_id)
