@@ -23,7 +23,6 @@ TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
-# 🔥 SEU ID (ADMIN)
 ADMIN_ID = 8584498503
 
 app = Flask(__name__)
@@ -32,121 +31,73 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 DB_FILE = "usuarios.json"
 
 # =============================
-# MIDIA
+# MIDIAS
 # =============================
 
 FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
-VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
+
+MIDIAS_VIP = [
+    # FOTOS
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMiadalWqyrO-DiYl9D6juKlr5epIYAAiYMaxtbAAG5Rhow-8sHdlnOAQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMjadalWufKeZ_A5IqW1lU9BiCmPjEAAigMaxtbAAG5Rh_43jcPh2SPAQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMkadalWvazoCPw5Wl8X-8IJgF9cR8AAioMaxtbAAG5RiaHphVTp9iZAQADAgADeQADOwQ"},
+    {"tipo": "foto", "id": "AgACAgEAAyEFAATanvxOAAMladalWhXgdDnrD-tUwoTyInpEKMIAAikMaxtbAAG5RgV6iGNg7W5PAQADAgADeQADOwQ"},
+
+    # VIDEOS
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDOWnWqNs-1FpAl43ilynlUwZ0g6g8AAJICAAC9KC4Rh5FmcPCMztcOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDOmnWqNv51sHmOSI4skR7Leg_niGDAAJACAAC9KC4RoWPxz3SVNSNOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDO2nWqNujS8IkK5L9bnaBzeNpQqjfAAJGCAAC9KC4RhGwOQG7fi2xOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDPGnWqNvwfsAZSsn_S8RvVLvcHNM9AAJOCAAC9KC4RmN0c2OjuTyaOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDPWnWqNtgenHSZrHn6qLFSdzOW-tNAAJKCAAC9KC4RrM2wJoZDWpWOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDPmnWqNtDzi5ZnGSDbD9Wjmf2dnHDAAJCCAAC9KC4Rj5Z_R4Jd3PNOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDP2nWqNuzpCpLt63s0xflUxkwj5PxAAJPCAAC9KC4RvNRz2QkIt0gOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDQGnWqNsope1o0KEPsiF-E8oybrkMAAJMCAAC9KC4RtFnuxv8mNjeOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDQWnWqNt16VBbSZ4HB-T8JdnUsi9HAAJHCAAC9KC4Rl2bdgy3ggfzOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDQmnWqNvFhIE23xwDLCxaSu7GBDKnAAJDCAAC9KC4Ru6UCoGAN02NOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDQ2nWqNuh23ry1SLL0DzdlLnKN9QrAAJFCAAC9KC4RtQY7wGiIsYFOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDRGnWqNs5349OAsmFsFk0bzhNI5t6AAJJCAAC9KC4Ri7Tie6IGxBfOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDRWnWqNsTztM9iJT_xH-766GRMWQeAAJNCAAC9KC4RgbUOhCNs0LGOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIDRmnWqNvIk0GV0051QxjuXQjTDVLIAAJBCAAC9KC4RiJEk_m4MDL3OwQ"},
+]
 
 # =============================
-# CAPTURA FILE_ID
+# ENVIO MIDIAS
 # =============================
 
-async def capturar_midia(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    if update.effective_chat.type not in ["group", "supergroup"]:
-        return
-
-    if update.message.photo:
-        file_id = update.message.photo[-1].file_id
-        await update.message.reply_text(f"📸 FOTO ID:\n{file_id}")
-
-    elif update.message.video:
-        file_id = update.message.video.file_id
-        await update.message.reply_text(f"🎥 VIDEO ID:\n{file_id}")
-
-    elif update.message.document:
-        file_id = update.message.document.file_id
-        await update.message.reply_text(f"📁 FILE ID:\n{file_id}")
+def enviar_midias(chat_id):
+    for midia in MIDIAS_VIP:
+        if midia["tipo"] == "foto":
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                json={"chat_id": chat_id, "photo": midia["id"]}
+            )
+        else:
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                json={"chat_id": chat_id, "video": midia["id"]}
+            )
+        time.sleep(0.5)
 
 # =============================
-# BANCO
+# LIBERAR ACESSO
 # =============================
 
-def carregar_usuarios():
-    if not os.path.exists(DB_FILE):
-        return {}
-    with open(DB_FILE, "r") as f:
-        return json.load(f)
-
-def salvar_usuarios(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f)
-
-def liberar_acesso(user_id, dias):
-    usuarios = carregar_usuarios()
-
-    if dias == 999:
-        usuarios[str(user_id)] = 9999999999
-    else:
-        expira = int(time.time()) + dias * 86400
-        usuarios[str(user_id)] = expira
-
-    salvar_usuarios(usuarios)
+def liberar_acesso(user_id):
+    enviar_midias(user_id)
 
 # =============================
-# PLANOS
-# =============================
-
-PLANOS = {
-    "isca": {"dias": 1, "preco": 4.50, "nome": "🔥 TESTE ISCA"},
-    "1d": {"dias": 1, "preco": 6.99, "nome": "💰 1 DIA VIP"},
-    "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
-    "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
-    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 COMPLETO"}
-}
-
-# =============================
-# PAGAMENTO
-# =============================
-
-def criar_pagamento(user_id, plano):
-    plano_info = PLANOS[plano]
-
-    r = requests.post(
-        "https://api.mercadopago.com/checkout/preferences",
-        headers={
-            "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "items": [{
-                "title": plano_info["nome"],
-                "quantity": 1,
-                "currency_id": "BRL",
-                "unit_price": plano_info["preco"]
-            }],
-            "external_reference": f"{user_id}|{plano}"
-        }
-    )
-
-    return r.json().get("init_point", "erro")
-
-# =============================
-# COMANDO ADMIN /LIBERAR
+# COMANDO /LIBERAR
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user_id = update.effective_user.id
-
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("❌ sem permissão")
+    if update.effective_user.id != ADMIN_ID:
         return
 
-    try:
-        plano = context.args[0]
-    except:
-        await update.message.reply_text("uso: /liberar 1d | isca | pack")
-        return
-
-    if plano not in PLANOS:
-        await update.message.reply_text("plano inválido")
-        return
-
-    liberar_acesso(user_id, PLANOS[plano]["dias"])
-
-    await update.message.reply_text(f"✅ liberado: {plano}")
+    liberar_acesso(update.effective_user.id)
+    await update.message.reply_text("🔥 midias liberadas")
 
 # =============================
 # START
@@ -157,7 +108,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oii... 🤭\n\nvocê me achou...\n\n😈 entra se tiver coragem",
+        caption="oii... 🤭 entra se tiver coragem 😈",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -169,29 +120,8 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    user_id = query.from_user.id
-
-    if query.data == "vip":
-
-        keyboard = [
-            [InlineKeyboardButton("🔥 TESTE R$4,50", callback_data="isca")],
-            [InlineKeyboardButton("💰 1 DIA R$6,99", callback_data="1d")],
-            [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
-            [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")],
-            [InlineKeyboardButton("📦 COMPLETO", callback_data="pack")]
-        ]
-
-        await query.message.reply_video(
-            video=VIDEO_VIP,
-            caption="😈 escolhe e entra...",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif query.data in PLANOS:
-
-        link = criar_pagamento(user_id, query.data)
-
-        await query.message.reply_text(f"👉 {link}")
+    link = "PAGAMENTO AQUI"
+    await query.message.reply_text(f"👉 {link}")
 
 # =============================
 # HANDLERS
@@ -200,7 +130,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CommandHandler("liberar", liberar))
 bot_app.add_handler(CallbackQueryHandler(botoes))
-bot_app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL, capturar_midia))
 
 # =============================
 # WEBHOOK
@@ -229,10 +158,6 @@ def set_webhook():
     )
 
 set_webhook()
-
-# =============================
-# RUN
-# =============================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
