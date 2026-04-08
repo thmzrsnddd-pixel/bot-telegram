@@ -4,8 +4,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 
 import asyncio
 import requests
-import time
-import json
 import os
 
 # =============================
@@ -138,6 +136,8 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =============================
 
 def enviar_midias(chat_id):
+    chat_id = int(chat_id)
+
     for foto in FOTOS:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
                       json={"chat_id": chat_id, "photo": foto})
@@ -147,16 +147,21 @@ def enviar_midias(chat_id):
                       json={"chat_id": chat_id, "video": video})
 
 # =============================
-# LIBERAR MANUAL
+# LIBERAR (SÓ PRA VOCÊ)
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
 
-    user_id = int(context.args[0])
-    enviar_midias(user_id)
-    await update.message.reply_text("liberado")
+    user_id = update.effective_user.id
+
+    try:
+        enviar_midias(user_id)
+        await update.message.reply_text("✅ mídias enviadas pra você")
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ erro: {e}")
 
 # =============================
 # REMARKETING
@@ -204,11 +209,9 @@ def mp():
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
 
-    async def process():
-        await bot_app.initialize()
-        await bot_app.process_update(update)
+    asyncio.run(bot_app.initialize())
+    asyncio.run(bot_app.process_update(update))
 
-    asyncio.run(process())
     return "ok"
 
 @app.route("/")
