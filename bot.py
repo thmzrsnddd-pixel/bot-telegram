@@ -12,7 +12,6 @@ import requests
 import time
 import json
 import os
-import random
 
 # =============================
 # CONFIG
@@ -108,7 +107,7 @@ PLANOS = {
     "1d": {"dias": 1, "preco": 7.00, "nome": "💰 1 DIA VIP"},
     "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
     "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
-    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 BIBLIOTECA COMPLETA"}
+    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 COMPLETO"}
 }
 
 # =============================
@@ -138,48 +137,6 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# REMARKETING (HUMANO)
-# =============================
-
-async def remarketing(user_id):
-    await asyncio.sleep(120)
-
-    if tem_acesso(user_id):
-        return
-
-    link = criar_pagamento(user_id, "isca")
-
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text":
-            "ei... você sumiu 😔\n\n"
-            "eu tava aqui pensando se você gostou...\n\n"
-            "vou te liberar um teste por R$5 só pra você ver melhor 🤭\n\n"
-            f"{link}"
-        }
-    )
-
-    await asyncio.sleep(300)
-
-    if tem_acesso(user_id):
-        return
-
-    link = criar_pagamento(user_id, "isca")
-
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text":
-            "acho que você ficou com vergonha né... 😅\n\n"
-            "relaxa, entra aqui comigo...\n\n"
-            f"{link}"
-        }
-    )
-
-# =============================
 # START
 # =============================
 
@@ -190,8 +147,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=FOTO_START,
         caption=
         "oii... 🤭\n\n"
-        "você apareceu aqui do nada...\n\n"
-        "e agora eu fiquei curiosa 👀",
+        "você me achou mesmo...\n\n"
+        "e eu acho que você não devia estar aqui 😈",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -208,7 +165,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "vip":
 
         salvar_interesse(user_id)
-        asyncio.create_task(remarketing(user_id))
 
         keyboard = [
             [InlineKeyboardButton("🔥 teste R$5", callback_data="isca")],
@@ -221,22 +177,25 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_video(
             video=VIDEO_VIP,
             caption=
-            "você não devia estar vendo isso... 🙈\n\n"
-            "mas já que chegou até aqui...\n\n"
-            "👇 escolhe como quer continuar comigo",
+            "eu não devia te mostrar isso... 🙈\n\n"
+            "mas já que você chegou até aqui...\n\n"
+            "👇 escolhe e vem comigo",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
 
-        await query.message.reply_text("espera... 👀")
+        await query.message.reply_text(
+            "tem certeza...? 😈\n\n"
+            "depois que entrar não tem volta...\n"
+        )
 
-        time.sleep(1.5)
+        time.sleep(1.2)
 
         link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            "não mostra isso pra ninguém tá? 🤭\n\n"
+            "entra aqui... mas não conta pra ninguém 🤭\n\n"
             f"{link}"
         )
 
@@ -255,7 +214,7 @@ def enviar_vip(chat_id, plano):
         json={
             "chat_id": chat_id,
             "text":
-            "pronto... agora é só você e eu 😈"
+            "pronto... agora você vai me ver de verdade 😈"
         }
     )
 
@@ -270,7 +229,7 @@ def enviar_pack(chat_id):
         json={
             "chat_id": chat_id,
             "text":
-            "agora você tem tudo 😏"
+            "agora você tem tudo… aproveita 😏"
         }
     )
 
@@ -341,7 +300,7 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# SET WEBHOOK
+# WEBHOOK
 # =============================
 
 def set_webhook():
