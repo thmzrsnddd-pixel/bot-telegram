@@ -4,15 +4,16 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
+    MessageHandler,
     ContextTypes,
+    filters
 )
 
+import asyncio
 import requests
 import time
 import json
 import os
-import threading
-import asyncio
 
 # =============================
 # CONFIG
@@ -22,13 +23,13 @@ TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
+# 🔥 SEU ID (ADMIN)
 ADMIN_ID = 8584498503
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 DB_FILE = "usuarios.json"
-INTERESSE_FILE = "interesse.json"
 
 # =============================
 # MIDIA
@@ -37,30 +38,26 @@ INTERESSE_FILE = "interesse.json"
 FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
 VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
 
-MIDIAS_VIP = list({
-    ("foto", "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"),
-    ("foto", "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"),
-    ("foto", "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"),
-    ("foto", "AgACAgEAAxkBAAIBX2nVAAHAXPd6uwjw7pDhicxr3YTsUwACGwxrG6ZgqUaPWpNpw3MxMAEAAwIAA3kAAzsE"),
-    ("foto", "AgACAgEAAxkBAAIBYGnVAAHAbnPgUhD1y1LTKG71eWe53AACHAxrG6ZgqUZMfSFoc5X4AQEAAwIAA3kAAzsE"),
-    ("video", "BAACAgEAAxkBAAIBYWnVAAHA7W2a3yrYP0gvzOmZO10dMQAC6wcAAqZgqUa6m46Dvr58qjsE"),
-    ("video", "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"),
-    ("video", "BAACAgEAAxkBAAIBY2nVAAHAYPdq3KsobU8gX9sl2dp2GwAC7AcAAqZgqUYDC8pyBIDwsDsE"),
-}).copy()
-
-MIDIAS_VIP = [{"tipo": t, "id": i} for t, i in MIDIAS_VIP]
-
 # =============================
-# PLANOS
+# CAPTURA FILE_ID
 # =============================
 
-PLANOS = {
-    "isca": {"dias": 1, "preco": 4.50, "nome": "🔥 OFERTA SECRETA 24H"},
-    "teste": {"dias": 1, "preco": 6.99, "nome": "🔥 TESTE VIP 24H"},
-    "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
-    "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
-    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 COMPLETO"}
-}
+async def capturar_midia(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if update.effective_chat.type not in ["group", "supergroup"]:
+        return
+
+    if update.message.photo:
+        file_id = update.message.photo[-1].file_id
+        await update.message.reply_text(f"📸 FOTO ID:\n{file_id}")
+
+    elif update.message.video:
+        file_id = update.message.video.file_id
+        await update.message.reply_text(f"🎥 VIDEO ID:\n{file_id}")
+
+    elif update.message.document:
+        file_id = update.message.document.file_id
+        await update.message.reply_text(f"📁 FILE ID:\n{file_id}")
 
 # =============================
 # BANCO
@@ -82,9 +79,22 @@ def liberar_acesso(user_id, dias):
     if dias == 999:
         usuarios[str(user_id)] = 9999999999
     else:
-        usuarios[str(user_id)] = int(time.time()) + dias * 86400
+        expira = int(time.time()) + dias * 86400
+        usuarios[str(user_id)] = expira
 
     salvar_usuarios(usuarios)
+
+# =============================
+# PLANOS
+# =============================
+
+PLANOS = {
+    "isca": {"dias": 1, "preco": 4.50, "nome": "🔥 TESTE ISCA"},
+    "1d": {"dias": 1, "preco": 6.99, "nome": "💰 1 DIA VIP"},
+    "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
+    "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
+    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 COMPLETO"}
+}
 
 # =============================
 # PAGAMENTO
@@ -104,7 +114,7 @@ def criar_pagamento(user_id, plano):
                 "title": plano_info["nome"],
                 "quantity": 1,
                 "currency_id": "BRL",
-                "unit_price": float(plano_info["preco"])
+                "unit_price": plano_info["preco"]
             }],
             "external_reference": f"{user_id}|{plano}"
         }
@@ -113,29 +123,117 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# ENTREGA
+# COMANDO ADMIN /LIBERAR
 # =============================
 
-def enviar_vip(chat_id, plano):
-    liberar_acesso(chat_id, PLANOS[plano]["dias"])
+async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    enviados = set()
+    user_id = update.effective_user.id
 
-    for midia in MIDIAS_VIP:
-        if midia["id"] in enviados:
-            continue
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ sem permissão")
+        return
 
-        enviados.add(midia["id"])
+    try:
+        plano = context.args[0]
+    except:
+        await update.message.reply_text("uso: /liberar 1d | isca | pack")
+        return
 
-        time.sleep(1.2)
+    if plano not in PLANOS:
+        await update.message.reply_text("plano inválido")
+        return
 
-        if midia["tipo"] == "foto":
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                json={"chat_id": chat_id, "photo": midia["id"], "protect_content": True}
-            )
-        else:
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                json={"chat_id": chat_id, "video": midia["id"], "protect_content": True}
-            )
+    liberar_acesso(user_id, PLANOS[plano]["dias"])
+
+    await update.message.reply_text(f"✅ liberado: {plano}")
+
+# =============================
+# START
+# =============================
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
+
+    await update.message.reply_photo(
+        photo=FOTO_START,
+        caption="oii... 🤭\n\nvocê me achou...\n\n😈 entra se tiver coragem",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+# =============================
+# BOTÕES
+# =============================
+
+async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    if query.data == "vip":
+
+        keyboard = [
+            [InlineKeyboardButton("🔥 TESTE R$4,50", callback_data="isca")],
+            [InlineKeyboardButton("💰 1 DIA R$6,99", callback_data="1d")],
+            [InlineKeyboardButton("🔥 7 DIAS", callback_data="7d")],
+            [InlineKeyboardButton("👑 15 DIAS", callback_data="15d")],
+            [InlineKeyboardButton("📦 COMPLETO", callback_data="pack")]
+        ]
+
+        await query.message.reply_video(
+            video=VIDEO_VIP,
+            caption="😈 escolhe e entra...",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif query.data in PLANOS:
+
+        link = criar_pagamento(user_id, query.data)
+
+        await query.message.reply_text(f"👉 {link}")
+
+# =============================
+# HANDLERS
+# =============================
+
+bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(CommandHandler("liberar", liberar))
+bot_app.add_handler(CallbackQueryHandler(botoes))
+bot_app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.Document.ALL, capturar_midia))
+
+# =============================
+# WEBHOOK
+# =============================
+
+@app.route(f"/webhook/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+
+    async def process():
+        await bot_app.initialize()
+        await bot_app.process_update(update)
+
+    asyncio.run(process())
+
+    return "ok", 200
+
+@app.route("/")
+def home():
+    return "online", 200
+
+def set_webhook():
+    requests.get(
+        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
+        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
+    )
+
+set_webhook()
+
+# =============================
+# RUN
+# =============================
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
