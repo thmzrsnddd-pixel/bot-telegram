@@ -4,9 +4,7 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
-    MessageHandler,
     ContextTypes,
-    filters
 )
 
 import asyncio
@@ -29,6 +27,13 @@ bot_app = ApplicationBuilder().token(TOKEN).build()
 
 DB_FILE = "usuarios.json"
 INTERESSE_FILE = "interesse.json"
+
+# =============================
+# MIDIA
+# =============================
+
+FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
+VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
 
 # =============================
 # BANCO
@@ -145,7 +150,7 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# REMARKETING DUPLO
+# REMARKETING
 # =============================
 
 async def remarketing(user_id):
@@ -180,14 +185,18 @@ async def remarketing(user_id):
     )
 
 # =============================
-# START
+# START (COM FOTO)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("😈 ENTRAR NO VIP", callback_data="vip")]]
 
-    await update.message.reply_text(
-        "oii... tava te esperando 🤭",
+    await update.message.reply_photo(
+        photo=FOTO_START,
+        caption=
+        "oii... tava te esperando aqui 🤭\n\n"
+        "😈 tenho umas coisas que não posto em lugar nenhum...\n\n"
+        "💦 e acho que você vai gostar",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -214,12 +223,22 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 COMPLETO R$10,99", callback_data="pack")]
         ]
 
-        await query.message.reply_text(
-            f"{prova_social()}\n\n😈 conteúdo exclusivo\n{escassez()}",
+        await query.message.reply_video(
+            video=VIDEO_VIP,
+            caption=
+            f"{prova_social()}\n\n"
+            "😈 você não deveria estar vendo isso...\n\n"
+            "💦 conteúdo exclusivo\n"
+            f"{escassez()}\n\n"
+            "👇 entra enquanto dá:",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
+
+        await query.message.reply_text("⏳ gerando acesso...")
+
+        time.sleep(1.5)
 
         link = criar_pagamento(user_id, query.data)
 
