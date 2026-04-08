@@ -7,11 +7,11 @@ from telegram.ext import (
     ContextTypes,
 )
 
-import asyncio
 import requests
 import time
 import json
 import os
+import threading
 
 # =============================
 # CONFIG
@@ -20,6 +20,8 @@ import os
 TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
+
+ADMIN_ID = 123456789  # ⚠️ coloca seu ID aqui
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
@@ -33,6 +35,12 @@ INTERESSE_FILE = "interesse.json"
 
 FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
 VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
+
+MIDIAS_VIP = [
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
+]
 
 # =============================
 # BANCO
@@ -74,27 +82,25 @@ def tem_acesso(user_id):
 # INTERESSE
 # =============================
 
+def carregar_interesse():
+    if not os.path.exists(INTERESSE_FILE):
+        return {}
+    with open(INTERESSE_FILE, "r") as f:
+        return json.load(f)
+
 def salvar_interesse(user_id):
-    data = {}
-    if os.path.exists(INTERESSE_FILE):
-        with open(INTERESSE_FILE, "r") as f:
-            data = json.load(f)
-
-    data[str(user_id)] = int(time.time())
-
+    data = carregar_interesse()
+    data[str(user_id)] = {
+        "tempo": int(time.time()),
+        "enviado": False
+    }
     with open(INTERESSE_FILE, "w") as f:
         json.dump(data, f)
 
 def remover_interesse(user_id):
-    if not os.path.exists(INTERESSE_FILE):
-        return
-
-    with open(INTERESSE_FILE, "r") as f:
-        data = json.load(f)
-
+    data = carregar_interesse()
     if str(user_id) in data:
         del data[str(user_id)]
-
     with open(INTERESSE_FILE, "w") as f:
         json.dump(data, f)
 
@@ -103,7 +109,7 @@ def remover_interesse(user_id):
 # =============================
 
 PLANOS = {
-    "isca": {"dias": 1, "preco": 5.00, "nome": "🔥 TESTE VIP 24H"},
+    "isca": {"dias": 1, "preco": 4.50, "nome": "🔥 TESTE VIP 24H"},
     "1d": {"dias": 1, "preco": 7.00, "nome": "💰 1 DIA VIP"},
     "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS VIP"},
     "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS VIP"},
@@ -137,6 +143,51 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
+# REMARKETING AUTOMÁTICO
+# =============================
+
+def loop_remarketing():
+    while True:
+        try:
+            data = carregar_interesse()
+            agora = int(time.time())
+
+            for user_id, info in data.items():
+                user_id = int(user_id)
+
+                if tem_acesso(user_id):
+                    continue
+
+                if info["enviado"]:
+                    continue
+
+                if agora - info["tempo"] > 120:
+                    link = criar_pagamento(user_id, "isca")
+
+                    requests.post(
+                        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                        json={
+                            "chat_id": user_id,
+                            "text":
+                            "ei... você sumiu 😔\n\n"
+                            "te libero 24h por R$4,50 agora...\n\n"
+                            f"{link}"
+                        }
+                    )
+
+                    data[str(user_id)]["enviado"] = True
+
+            with open(INTERESSE_FILE, "w") as f:
+                json.dump(data, f)
+
+        except Exception as e:
+            print("ERRO LOOP:", e)
+
+        time.sleep(60)
+
+threading.Thread(target=loop_remarketing, daemon=True).start()
+
+# =============================
 # START
 # =============================
 
@@ -147,8 +198,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=FOTO_START,
         caption=
         "oii... 🤭\n\n"
-        "você me achou mesmo...\n\n"
-        "e eu acho que você não devia estar aqui 😈",
+        "acho que você não devia estar aqui 😈",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -167,7 +217,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         salvar_interesse(user_id)
 
         keyboard = [
-            [InlineKeyboardButton("🔥 teste R$5", callback_data="isca")],
+            [InlineKeyboardButton("🔥 teste R$4,50", callback_data="isca")],
             [InlineKeyboardButton("👑 15 dias", callback_data="15d")],
             [InlineKeyboardButton("🔥 7 dias", callback_data="7d")],
             [InlineKeyboardButton("💰 1 dia", callback_data="1d")],
@@ -176,31 +226,18 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_video(
             video=VIDEO_VIP,
-            caption=
-            "eu não devia te mostrar isso... 🙈\n\n"
-            "mas já que você chegou até aqui...\n\n"
-            "👇 escolhe e vem comigo",
+            caption="👇 escolhe e entra",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
 
-        await query.message.reply_text(
-            "tem certeza...? 😈\n\n"
-            "depois que entrar não tem volta...\n"
-        )
-
-        time.sleep(1.2)
-
         link = criar_pagamento(user_id, query.data)
 
-        await query.message.reply_text(
-            "entra aqui... mas não conta pra ninguém 🤭\n\n"
-            f"{link}"
-        )
+        await query.message.reply_text(f"{link}")
 
 # =============================
-# ENTREGA
+# ENTREGA (ANTI PRINT)
 # =============================
 
 def enviar_vip(chat_id, plano):
@@ -213,25 +250,49 @@ def enviar_vip(chat_id, plano):
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={
             "chat_id": chat_id,
-            "text":
-            "pronto... agora você vai me ver de verdade 😈"
+            "text": f"🔒 acesso liberado\nID: {chat_id}\nnão compartilha"
         }
     )
+
+    for midia in MIDIAS_VIP:
+        time.sleep(2)
+
+        if midia["tipo"] == "foto":
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                json={
+                    "chat_id": chat_id,
+                    "photo": midia["id"],
+                    "protect_content": True
+                }
+            )
+
+        elif midia["tipo"] == "video":
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                json={
+                    "chat_id": chat_id,
+                    "video": midia["id"],
+                    "protect_content": True
+                }
+            )
 
 def enviar_pack(chat_id):
-    chat_id = int(chat_id)
+    enviar_vip(chat_id, "pack")
 
-    remover_interesse(chat_id)
-    liberar_acesso(chat_id, 999)
+# =============================
+# COMANDO TESTE
+# =============================
 
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text":
-            "agora você tem tudo… aproveita 😏"
-        }
-    )
+async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    user_id = update.effective_chat.id
+
+    enviar_vip(user_id, "1d")
+
+    await update.message.reply_text("liberado para teste")
 
 # =============================
 # WEBHOOK MP
@@ -284,6 +345,7 @@ def webhook():
         await bot_app.initialize()
         await bot_app.process_update(update)
 
+    import asyncio
     asyncio.run(process())
 
     return "ok", 200
@@ -297,6 +359,7 @@ def home():
 # =============================
 
 bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(CommandHandler("liberar", liberar))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
