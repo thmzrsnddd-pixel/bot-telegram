@@ -12,6 +12,7 @@ import time
 import json
 import os
 import threading
+import asyncio
 
 # =============================
 # CONFIG
@@ -21,7 +22,7 @@ TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 
-ADMIN_ID = 8584498503  # ⚠️ coloca seu ID aqui
+ADMIN_ID = 123456789  # COLOQUE SEU ID AQUI
 
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
@@ -39,7 +40,22 @@ VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1c
 MIDIAS_VIP = [
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
     {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBX2nVAAHAXPd6uwjw7pDhicxr3YTsUwACGwxrG6ZgqUaPWpNpw3MxMAEAAwIAA3kAAzsE"},
+    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBYGnVAAHAbnPgUhD1y1LTKG71eWe53AACHAxrG6ZgqUZMfSFoc5X4AQEAAwIAA3kAAzsE"},
+
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYWnVAAHA7W2a3yrYP0gvzOmZO10dMQAC6wcAAqZgqUa6m46Dvr58qjsE"},
     {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBY2nVAAHAYPdq3KsobU8gX9sl2dp2GwAC7AcAAqZgqUYDC8pyBIDwsDsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBZGnVAAHAO7O3Vtsh6t7BzFAgCgkX7QAC9gcAAqZgqUaNNQWAeadz-DsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBfGnVBDC9xZw0FtseNIzz_FmR4XeEAALzBwACpmCpRocrceFUB73EOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBfWnVBDAgot9YitzGPmm3lA9t6kSIAALvBwACpmCpRtExmf_B8lfTOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBfmnVBDBjaiN9Vl35M3JCKJaaXvVqAAL1BwACpmCpRjv8Dep8J5t7OwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBf2nVBDD0eCe5q-ubUy_otnlgyi3sAAL0BwACpmCpRiVTPvWB3cjvOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBZWnVAAHL7IUtQjRlXHLqxMctEnOhrAAC8AcAAqZgqUYSiKkeHt5nZDsE"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBgWnVBDCfWfEuMqrOFrb3nojMRpu9AALtBwACpmCpRq4zyCG12sCjOwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBgmnVBDAsry3P8cvIVvq_3KFeZ_k4AALuBwACpmCpRr2Z6PiI2y82OwQ"},
+    {"tipo": "video", "id": "BAACAgEAAxkBAAIBg2nVBDD2kSeQpjFKeRUbLcA9OUsuAALyBwACpmCpRmrO7OTS2UAiOwQ"},
 ]
 
 # =============================
@@ -90,10 +106,7 @@ def carregar_interesse():
 
 def salvar_interesse(user_id):
     data = carregar_interesse()
-    data[str(user_id)] = {
-        "tempo": int(time.time()),
-        "enviado": False
-    }
+    data[str(user_id)] = {"tempo": int(time.time()), "enviado": False}
     with open(INTERESSE_FILE, "w") as f:
         json.dump(data, f)
 
@@ -143,7 +156,7 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# REMARKETING AUTOMÁTICO
+# REMARKETING LOOP
 # =============================
 
 def loop_remarketing():
@@ -181,7 +194,7 @@ def loop_remarketing():
                 json.dump(data, f)
 
         except Exception as e:
-            print("ERRO LOOP:", e)
+            print("ERRO:", e)
 
         time.sleep(60)
 
@@ -196,9 +209,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption=
-        "oii... 🤭\n\n"
-        "acho que você não devia estar aqui 😈",
+        caption="oii... 🤭\n\nacho que você não devia estar aqui 😈",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -213,7 +224,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "vip":
-
         salvar_interesse(user_id)
 
         keyboard = [
@@ -231,13 +241,11 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif query.data in PLANOS:
-
         link = criar_pagamento(user_id, query.data)
-
         await query.message.reply_text(f"{link}")
 
 # =============================
-# ENTREGA (ANTI PRINT)
+# ENTREGA
 # =============================
 
 def enviar_vip(chat_id, plano):
@@ -245,14 +253,6 @@ def enviar_vip(chat_id, plano):
 
     remover_interesse(chat_id)
     liberar_acesso(chat_id, PLANOS[plano]["dias"])
-
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": f"🔒 acesso liberado\nID: {chat_id}\nnão compartilha"
-        }
-    )
 
     for midia in MIDIAS_VIP:
         time.sleep(2)
@@ -267,7 +267,7 @@ def enviar_vip(chat_id, plano):
                 }
             )
 
-        elif midia["tipo"] == "video":
+        else:
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                 json={
@@ -281,18 +281,15 @@ def enviar_pack(chat_id):
     enviar_vip(chat_id, "pack")
 
 # =============================
-# COMANDO TESTE
+# /LIBERAR
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
 
-    user_id = update.effective_chat.id
-
-    enviar_vip(user_id, "1d")
-
-    await update.message.reply_text("liberado para teste")
+    enviar_vip(update.effective_chat.id, "1d")
+    await update.message.reply_text("liberado")
 
 # =============================
 # WEBHOOK MP
@@ -306,7 +303,6 @@ def mp():
 
     try:
         if data.get("type") == "payment":
-
             payment_id = data["data"]["id"]
 
             if payment_id in pagamentos_processados:
@@ -320,7 +316,6 @@ def mp():
             ).json()
 
             if pagamento["status"] == "approved":
-
                 user_id, plano = pagamento["external_reference"].split("|")
 
                 if plano == "pack":
@@ -345,7 +340,6 @@ def webhook():
         await bot_app.initialize()
         await bot_app.process_update(update)
 
-    import asyncio
     asyncio.run(process())
 
     return "ok", 200
