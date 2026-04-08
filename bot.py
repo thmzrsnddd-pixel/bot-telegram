@@ -100,18 +100,6 @@ def remover_interesse(user_id):
         json.dump(data, f)
 
 # =============================
-# MARKETING
-# =============================
-
-nomes_fake = ["Lucas", "Marcos", "Ana", "Pedro", "Julia", "Rafael"]
-
-def prova_social():
-    return f"🔥 {random.choice(nomes_fake)} acabou de entrar no VIP"
-
-def escassez():
-    return f"⚠️ restam apenas {random.randint(3,9)} vagas hoje"
-
-# =============================
 # PLANOS
 # =============================
 
@@ -150,7 +138,7 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# REMARKETING
+# REMARKETING (HUMANO)
 # =============================
 
 async def remarketing(user_id):
@@ -165,7 +153,11 @@ async def remarketing(user_id):
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={
             "chat_id": user_id,
-            "text": f"{prova_social()}\n\n🔥 24h VIP por R$5\n{escassez()}\n\n👉 {link}"
+            "text":
+            "ei... você sumiu 😔\n\n"
+            "eu tava aqui pensando se você gostou...\n\n"
+            "vou te liberar um teste por R$5 só pra você ver melhor 🤭\n\n"
+            f"{link}"
         }
     )
 
@@ -180,23 +172,26 @@ async def remarketing(user_id):
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={
             "chat_id": user_id,
-            "text": f"⏳ última chance\n\n{escassez()}\n\n👉 {link}"
+            "text":
+            "acho que você ficou com vergonha né... 😅\n\n"
+            "relaxa, entra aqui comigo...\n\n"
+            f"{link}"
         }
     )
 
 # =============================
-# START (COM FOTO)
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("😈 ENTRAR NO VIP", callback_data="vip")]]
+    keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
 
     await update.message.reply_photo(
         photo=FOTO_START,
         caption=
-        "oii... tava te esperando aqui 🤭\n\n"
-        "😈 tenho umas coisas que não posto em lugar nenhum...\n\n"
-        "💦 e acho que você vai gostar",
+        "oii... 🤭\n\n"
+        "você apareceu aqui do nada...\n\n"
+        "e agora eu fiquei curiosa 👀",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -216,38 +211,37 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         asyncio.create_task(remarketing(user_id))
 
         keyboard = [
-            [InlineKeyboardButton("🔥 TESTE 24H R$5", callback_data="isca")],
-            [InlineKeyboardButton("👑 15 DIAS R$22,99", callback_data="15d")],
-            [InlineKeyboardButton("🔥 7 DIAS R$14,99", callback_data="7d")],
-            [InlineKeyboardButton("💰 1 DIA R$7", callback_data="1d")],
-            [InlineKeyboardButton("📦 COMPLETO R$10,99", callback_data="pack")]
+            [InlineKeyboardButton("🔥 teste R$5", callback_data="isca")],
+            [InlineKeyboardButton("👑 15 dias", callback_data="15d")],
+            [InlineKeyboardButton("🔥 7 dias", callback_data="7d")],
+            [InlineKeyboardButton("💰 1 dia", callback_data="1d")],
+            [InlineKeyboardButton("📦 completo", callback_data="pack")]
         ]
 
         await query.message.reply_video(
             video=VIDEO_VIP,
             caption=
-            f"{prova_social()}\n\n"
-            "😈 você não deveria estar vendo isso...\n\n"
-            "💦 conteúdo exclusivo\n"
-            f"{escassez()}\n\n"
-            "👇 entra enquanto dá:",
+            "você não devia estar vendo isso... 🙈\n\n"
+            "mas já que chegou até aqui...\n\n"
+            "👇 escolhe como quer continuar comigo",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
 
-        await query.message.reply_text("⏳ gerando acesso...")
+        await query.message.reply_text("espera... 👀")
 
         time.sleep(1.5)
 
         link = criar_pagamento(user_id, query.data)
 
         await query.message.reply_text(
-            f"{PLANOS[query.data]['nome']}\n\n👉 {link}"
+            "não mostra isso pra ninguém tá? 🤭\n\n"
+            f"{link}"
         )
 
 # =============================
-# ENTREGA + UPSELL
+# ENTREGA
 # =============================
 
 def enviar_vip(chat_id, plano):
@@ -258,19 +252,12 @@ def enviar_vip(chat_id, plano):
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "😈 acesso liberado"}
+        json={
+            "chat_id": chat_id,
+            "text":
+            "pronto... agora é só você e eu 😈"
+        }
     )
-
-    if plano in ["isca", "1d"]:
-        link = criar_pagamento(chat_id, "15d")
-
-        requests.post(
-            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": f"🔥 upgrade especial\n{escassez()}\n👉 {link}"
-            }
-        )
 
 def enviar_pack(chat_id):
     chat_id = int(chat_id)
@@ -280,7 +267,11 @@ def enviar_pack(chat_id):
 
     requests.post(
         f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "📦 vitalício liberado"}
+        json={
+            "chat_id": chat_id,
+            "text":
+            "agora você tem tudo 😏"
+        }
     )
 
 # =============================
