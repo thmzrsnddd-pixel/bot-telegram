@@ -37,15 +37,18 @@ INTERESSE_FILE = "interesse.json"
 FOTO_START = "AgACAgEAAxkBAAIBW2nVAAHA4MmTOu-BxgLp5jg8Ki_BSwACGAxrG6ZgqUZa618MB7ra7wEAAwIAA3kAAzsE"
 VIDEO_VIP = "BAACAgEAAyEFAATanvxOAAMUadUHHCYG4cpssnNLzoS_9tzrQAgAAvoHAAKmYKlGY1cOvM0Wqzw7BA"
 
-MIDIAS_VIP = [
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBX2nVAAHAXPd6uwjw7pDhicxr3YTsUwACGwxrG6ZgqUaPWpNpw3MxMAEAAwIAA3kAAzsE"},
-    {"tipo": "foto", "id": "AgACAgEAAxkBAAIBYGnVAAHAbnPgUhD1y1LTKG71eWe53AACHAxrG6ZgqUZMfSFoc5X4AQEAAwIAA3kAAzsE"},
-    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYWnVAAHA7W2a3yrYP0gvzOmZO10dMQAC6wcAAqZgqUa6m46Dvr58qjsE"},
-    {"tipo": "video", "id": "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"},
-]
+MIDIAS_VIP = list({
+    ("foto", "AgACAgEAAxkBAAIBXGnVAAHAb5B3BdUxiosov-1dgCmJKwACFwxrG6ZgqUaMyF1kSngZSgEAAwIAA3kAAzsE"),
+    ("foto", "AgACAgEAAxkBAAIBXWnVAAHAbVGKwRoQSJjZ3BNnHh7NqQACGQxrG6ZgqUbCJc8OBDvJYwEAAwIAA3kAAzsE"),
+    ("foto", "AgACAgEAAxkBAAIBXmnVAAHAtv9eH4pPF3wWgNnAbEAOHwACGgxrG6ZgqUbO0Js_MMVsjgEAAwIAA3kAAzsE"),
+    ("foto", "AgACAgEAAxkBAAIBX2nVAAHAXPd6uwjw7pDhicxr3YTsUwACGwxrG6ZgqUaPWpNpw3MxMAEAAwIAA3kAAzsE"),
+    ("foto", "AgACAgEAAxkBAAIBYGnVAAHAbnPgUhD1y1LTKG71eWe53AACHAxrG6ZgqUZMfSFoc5X4AQEAAwIAA3kAAzsE"),
+    ("video", "BAACAgEAAxkBAAIBYWnVAAHA7W2a3yrYP0gvzOmZO10dMQAC6wcAAqZgqUa6m46Dvr58qjsE"),
+    ("video", "BAACAgEAAxkBAAIBYmnVAAHAeHwHLWHdbsLbnNUvLIaoVgAC8QcAAqZgqUbtoS5YWN_WPjsE"),
+    ("video", "BAACAgEAAxkBAAIBY2nVAAHAYPdq3KsobU8gX9sl2dp2GwAC7AcAAqZgqUYDC8pyBIDwsDsE"),
+}).copy()
+
+MIDIAS_VIP = [{"tipo": t, "id": i} for t, i in MIDIAS_VIP]
 
 # =============================
 # PLANOS
@@ -83,10 +86,6 @@ def liberar_acesso(user_id, dias):
 
     salvar_usuarios(usuarios)
 
-def tem_acesso(user_id):
-    usuarios = carregar_usuarios()
-    return str(user_id) in usuarios and time.time() < usuarios[str(user_id)]
-
 # =============================
 # PAGAMENTO
 # =============================
@@ -105,7 +104,7 @@ def criar_pagamento(user_id, plano):
                 "title": plano_info["nome"],
                 "quantity": 1,
                 "currency_id": "BRL",
-                "unit_price": plano_info["preco"]
+                "unit_price": float(plano_info["preco"])
             }],
             "external_reference": f"{user_id}|{plano}"
         }
@@ -114,112 +113,21 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point", "erro")
 
 # =============================
-# REMARKETING AUTO
-# =============================
-
-def loop_remarketing():
-    while True:
-        try:
-            if not os.path.exists(INTERESSE_FILE):
-                time.sleep(30)
-                continue
-
-            with open(INTERESSE_FILE, "r") as f:
-                data = json.load(f)
-
-            agora = int(time.time())
-
-            for user_id, tempo in data.items():
-                if agora - tempo > 120:
-                    link = criar_pagamento(user_id, "isca")
-
-                    requests.post(
-                        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                        json={
-                            "chat_id": user_id,
-                            "text":
-                            "ei... 😔\n\n"
-                            "eu fiquei te esperando...\n\n"
-                            "💦 vou te liberar por R$4,50 agora...\n\n"
-                            f"{link}"
-                        }
-                    )
-
-            time.sleep(60)
-
-        except:
-            pass
-
-threading.Thread(target=loop_remarketing, daemon=True).start()
-
-# =============================
-# START
-# =============================
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
-
-    await update.message.reply_photo(
-        photo=FOTO_START,
-        caption="oii... 🤭\n\nvocê me achou mesmo...\n\n😈",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-# =============================
-# BOTÕES
-# =============================
-
-async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    user_id = query.from_user.id
-
-    if query.data == "vip":
-
-        with open(INTERESSE_FILE, "w") as f:
-            json.dump({str(user_id): int(time.time())}, f)
-
-        keyboard = [
-            [InlineKeyboardButton("🔥 TESTE R$6,99", callback_data="teste")],
-            [InlineKeyboardButton("👑 15 dias", callback_data="15d")],
-            [InlineKeyboardButton("🔥 7 dias", callback_data="7d")],
-            [InlineKeyboardButton("📦 completo", callback_data="pack")]
-        ]
-
-        await query.message.reply_video(
-            video=VIDEO_VIP,
-            caption=
-            "😈 você não devia estar vendo isso...\n\n"
-            "💦 conteúdo privado\n\n"
-            "👇 entra logo:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif query.data in PLANOS:
-
-        await query.message.reply_text(
-            "tem certeza...? 😈\n\n"
-            "depois que entrar você não sai mais..."
-        )
-
-        time.sleep(1)
-
-        link = criar_pagamento(user_id, query.data)
-
-        await query.message.reply_text(
-            f"entra aqui então 🤭\n\n{link}"
-        )
-
-# =============================
-# ENTREGA VIP
+# ENTREGA
 # =============================
 
 def enviar_vip(chat_id, plano):
     liberar_acesso(chat_id, PLANOS[plano]["dias"])
 
+    enviados = set()
+
     for midia in MIDIAS_VIP:
-        time.sleep(1.5)
+        if midia["id"] in enviados:
+            continue
+
+        enviados.add(midia["id"])
+
+        time.sleep(1.2)
 
         if midia["tipo"] == "foto":
             requests.post(
@@ -231,91 +139,3 @@ def enviar_vip(chat_id, plano):
                 f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                 json={"chat_id": chat_id, "video": midia["id"], "protect_content": True}
             )
-
-# =============================
-# COMANDO TESTE
-# =============================
-
-async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    enviar_vip(update.effective_chat.id, "teste")
-    await update.message.reply_text("liberado")
-
-# =============================
-# WEBHOOK MP
-# =============================
-
-pagamentos_processados = set()
-
-@app.route("/mp", methods=["POST"])
-def mp():
-    data = request.get_json()
-
-    if data.get("type") == "payment":
-        payment_id = data["data"]["id"]
-
-        if payment_id in pagamentos_processados:
-            return "ok", 200
-
-        pagamentos_processados.add(payment_id)
-
-        pagamento = requests.get(
-            f"https://api.mercadopago.com/v1/payments/{payment_id}",
-            headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
-        ).json()
-
-        if pagamento["status"] == "approved":
-            user_id, plano = pagamento["external_reference"].split("|")
-            enviar_vip(user_id, plano)
-
-    return "ok", 200
-
-# =============================
-# WEBHOOK TELEGRAM
-# =============================
-
-@app.route(f"/webhook/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-
-    async def process():
-        await bot_app.initialize()
-        await bot_app.process_update(update)
-
-    asyncio.run(process())
-
-    return "ok", 200
-
-@app.route("/")
-def home():
-    return "online", 200
-
-# =============================
-# HANDLERS
-# =============================
-
-bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(CommandHandler("liberar", liberar))
-bot_app.add_handler(CallbackQueryHandler(botoes))
-
-# =============================
-# SET WEBHOOK
-# =============================
-
-def set_webhook():
-    requests.get(
-        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
-    )
-
-set_webhook()
-
-# =============================
-# RUN
-# =============================
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
