@@ -18,6 +18,9 @@ ADMIN_ID = 8584498503
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
+usuarios_funil = set()
+usuarios_upsell = set()
+
 # =============================
 # MIDIAS
 # =============================
@@ -38,16 +41,7 @@ VIDEOS = [
 "BAACAgEAAxkBAAIDOmnWqNv51sHmOSI4skR7Leg_niGDAAJACAAC9KC4RoWPxz3SVNSNOwQ",
 "BAACAgEAAxkBAAIDO2nWqNujS8IkK5L9bnaBzeNpQqjfAAJGCAAC9KC4RhGwOQG7fi2xOwQ",
 "BAACAgEAAxkBAAIDPGnWqNvwfsAZSsn_S8RvVLvcHNM9AAJOCAAC9KC4RmN0c2OjuTyaOwQ",
-"BAACAgEAAxkBAAIDPWnWqNtgenHSZrHn6qLFSdzOW-tNAAJKCAAC9KC4RrM2wJoZDWpWOwQ",
-"BAACAgEAAxkBAAIDPmnWqNtDzi5ZnGSDbD9Wjmf2dnHDAAJCCAAC9KC4Rj5Z_R4Jd3PNOwQ",
-"BAACAgEAAxkBAAIDP2nWqNuzpCpLt63s0xflUxkwj5PxAAJPCAAC9KC4RvNRz2QkIt0gOwQ",
-"BAACAgEAAxkBAAIDQGnWqNsope1o0KEPsiF-E8oybrkMAAJMCAAC9KC4RtFnuxv8mNjeOwQ",
-"BAACAgEAAxkBAAIDQWnWqNt16VBbSZ4HB-T8JdnUsi9HAAJHCAAC9KC4Rl2bdgy3ggfzOwQ",
-"BAACAgEAAxkBAAIDQmnWqNvFhIE23xwDLCxaSu7GBDKnAAJDCAAC9KC4Ru6UCoGAN02NOwQ",
-"BAACAgEAAxkBAAIDQ2nWqNuh23ry1SLL0DzdlLnKN9QrAAJFCAAC9KC4RtQY7wGiIsYFOwQ",
-"BAACAgEAAxkBAAIDRGnWqNs5349OAsmFsFk0bzhNI5t6AAJJCAAC9KC4Ri7Tie6IGxBfOwQ",
-"BAACAgEAAxkBAAIDRWnWqNsTztM9iJT_xH-766GRMWQeAAJNCAAC9KC4RgbUOhCNs0LGOwQ",
-"BAACAgEAAxkBAAIDRmnWqNvIk0GV0051QxjuXQjTDVLIAAJBCAAC9KC4RiJEk_m4MDL3OwQ"
+"BAACAgEAAxkBAAIDPWnWqNtgenHSZrHn6qLFSdzOW-tNAAJKCAAC9KC4RrM2wJoZDWpWOwQ"
 ]
 
 # =============================
@@ -55,11 +49,12 @@ VIDEOS = [
 # =============================
 
 PLANOS = {
-    "isca": {"dias": 1, "preco": 4.50, "nome": "🔥 PROMOÇÃO 24H"},
-    "teste": {"dias": 1, "preco": 6.99, "nome": "💰 TESTE VIP"},
-    "7d": {"dias": 7, "preco": 14.99, "nome": "🔥 7 DIAS"},
-    "15d": {"dias": 15, "preco": 22.99, "nome": "👑 15 DIAS"},
-    "pack": {"dias": 999, "preco": 10.99, "nome": "📦 COMPLETO"}
+    "isca": {"preco": 4.50, "nome": "🔥 PROMOÇÃO"},
+    "upgrade": {"preco": 3.99, "nome": "🔓 LIBERAR RESTO"},
+    "leve": {"preco": 6.99, "nome": "😈 LEVE"},
+    "pesado": {"preco": 14.99, "nome": "🔥 PESADO"},
+    "pesadissimo": {"preco": 22.99, "nome": "💀 PESADÍSSIMO"},
+    "pack": {"preco": 10.99, "nome": "📦 COMPLETO"}
 }
 
 # =============================
@@ -86,10 +81,76 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point")
 
 # =============================
+# ENVIO MIDIAS
+# =============================
+
+def enviar_fotos(chat_id):
+    for foto in FOTOS:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                      json={"chat_id": chat_id, "photo": foto})
+
+def enviar_videos(chat_id):
+    for video in VIDEOS:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                      json={"chat_id": chat_id, "video": video})
+
+def enviar_preview(chat_id):
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                  json={"chat_id": chat_id, "video": VIDEOS[0]})
+
+# =============================
+# FUNIL AUTOMATICO
+# =============================
+
+async def funil(user_id):
+    await asyncio.sleep(120)
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id, "text": "ei... saiu assim? 😏"})
+
+    await asyncio.sleep(480)
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id, "text": "tem coisa ali que eu não mostro sempre não 👀"})
+
+    await asyncio.sleep(1200)
+    link = criar_pagamento(user_id, "isca")
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={
+            "chat_id": user_id,
+            "text": "última chance 😈\n\nte libero por R$4,50 👇",
+            "reply_markup": {"inline_keyboard": [[{"text": "🔥 ENTRAR AGORA", "url": link}]]}
+        })
+
+# =============================
+# UPSELL REMARKETING
+# =============================
+
+async def upsell_remarketing(user_id):
+    await asyncio.sleep(300)
+
+    if user_id in usuarios_upsell:
+        return
+
+    link = criar_pagamento(user_id, "upgrade")
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={
+            "chat_id": user_id,
+            "text": "👀 ainda ta ai?\n\nlibero o resto por R$3,99 👇",
+            "reply_markup": {"inline_keyboard": [[{"text": "🔓 LIBERAR", "url": link}]]}
+        })
+
+# =============================
 # START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in usuarios_funil:
+        usuarios_funil.add(user_id)
+        asyncio.create_task(funil(user_id))
+
     keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
 
     await update.message.reply_photo(
@@ -108,76 +169,21 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if query.data == "vip":
-
-        asyncio.create_task(remarketing(user_id))
-
         keyboard = [
-            [InlineKeyboardButton("🔥 R$4,50", callback_data="isca")],
-            [InlineKeyboardButton("💰 R$6,99", callback_data="teste")],
-            [InlineKeyboardButton("🔥 7 dias", callback_data="7d")],
-            [InlineKeyboardButton("👑 15 dias", callback_data="15d")],
-            [InlineKeyboardButton("📦 completo", callback_data="pack")]
+            [InlineKeyboardButton("😈 LEVE", callback_data="leve")],
+            [InlineKeyboardButton("🔥 PESADO", callback_data="pesado")],
+            [InlineKeyboardButton("💀 PESADÍSSIMO", callback_data="pesadissimo")],
+            [InlineKeyboardButton("📦 COMPLETO", callback_data="pack")]
         ]
 
         await query.message.reply_text(
-            "eu não devia te mostrar isso... 😈\n\n👇 escolhe:",
+            "eu separei por níveis... 😈\n\n👇 escolhe:",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif query.data in PLANOS:
         link = criar_pagamento(user_id, query.data)
-
-        await query.message.reply_text(
-            "👉 PAGAMENTO AQUI\n\n" + link
-        )
-
-# =============================
-# ENTREGA
-# =============================
-
-def enviar_midias(chat_id):
-    chat_id = int(chat_id)
-
-    for foto in FOTOS:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                      json={"chat_id": chat_id, "photo": foto})
-
-    for video in VIDEOS:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                      json={"chat_id": chat_id, "video": video})
-
-# =============================
-# LIBERAR (SÓ PRA VOCÊ)
-# =============================
-
-async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    user_id = update.effective_user.id
-
-    try:
-        enviar_midias(user_id)
-        await update.message.reply_text("✅ mídias enviadas pra você")
-
-    except Exception as e:
-        await update.message.reply_text(f"❌ erro: {e}")
-
-# =============================
-# REMARKETING
-# =============================
-
-async def remarketing(user_id):
-    await asyncio.sleep(120)
-
-    link = criar_pagamento(user_id, "isca")
-
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text": f"🔥 promoção R$4,50\n\n👉 {link}"
-        }
-    )
+        await query.message.reply_text("😏 boa escolha...\n\n👇\n" + link)
 
 # =============================
 # WEBHOOK MP
@@ -197,7 +203,58 @@ def mp():
 
         if pagamento["status"] == "approved":
             user_id, plano = pagamento["external_reference"].split("|")
-            enviar_midias(user_id)
+            user_id = int(user_id)
+
+            if plano == "isca":
+                enviar_fotos(user_id)
+                enviar_preview(user_id)
+
+                link = criar_pagamento(user_id, "upgrade")
+
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                    json={
+                        "chat_id": user_id,
+                        "text": "😈 quer liberar tudo?\n\nsó R$3,99 👇",
+                        "reply_markup": {"inline_keyboard": [[{"text": "🔓 LIBERAR", "url": link}]]}
+                    })
+
+                asyncio.create_task(upsell_remarketing(user_id))
+
+            elif plano == "upgrade":
+                usuarios_upsell.add(user_id)
+                enviar_videos(user_id)
+
+            elif plano == "leve":
+                enviar_fotos(user_id)
+
+                link = criar_pagamento(user_id, "pesado")
+
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                    json={
+                        "chat_id": user_id,
+                        "text": "😈 quer subir pro PESADO por +R$4,99? 👇",
+                        "reply_markup": {"inline_keyboard": [[{"text": "🔥 SUBIR", "url": link}]]}
+                    })
+
+            elif plano == "pesado":
+                enviar_videos(user_id)
+
+                link = criar_pagamento(user_id, "pesadissimo")
+
+                requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                    json={
+                        "chat_id": user_id,
+                        "text": "💀 agora o PESADÍSSIMO por +R$4,99 👇",
+                        "reply_markup": {"inline_keyboard": [[{"text": "💀 SUBIR", "url": link}]]}
+                    })
+
+            elif plano == "pesadissimo":
+                enviar_fotos(user_id)
+                enviar_videos(user_id)
+
+            elif plano == "pack":
+                enviar_fotos(user_id)
+                enviar_videos(user_id)
 
     return "ok", 200
 
@@ -218,17 +275,8 @@ def webhook():
 def home():
     return "online"
 
-# =============================
-# HANDLERS
-# =============================
-
 bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(CommandHandler("liberar", liberar))
 bot_app.add_handler(CallbackQueryHandler(botoes))
-
-# =============================
-# SET WEBHOOK
-# =============================
 
 def set_webhook():
     requests.get(
@@ -237,10 +285,6 @@ def set_webhook():
     )
 
 set_webhook()
-
-# =============================
-# RUN
-# =============================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
