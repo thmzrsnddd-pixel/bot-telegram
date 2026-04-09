@@ -10,13 +10,18 @@ import os
 # CONFIG
 # =============================
 
-TOKEN = "SEU_TOKEN_AQUI"
-PUBLIC_URL = "SEU_RENDER_URL"
-MP_ACCESS_TOKEN = "SEU_MP_TOKEN"
+TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
+PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
+MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 ADMIN_ID = 8584498503
 
 app = Flask(__name__)
+
 bot_app = ApplicationBuilder().token(TOKEN).build()
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+loop.run_until_complete(bot_app.initialize())
 
 usuarios_funil = set()
 usuarios_upsell = set()
@@ -25,10 +30,16 @@ usuarios_upsell = set()
 # MIDIAS
 # =============================
 
-FOTO_START = "SEU_FILE_ID"
+FOTO_START = "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ"
 
-FOTOS = ["ID1","ID2"]
-VIDEOS = ["ID1","ID2"]
+FOTOS = [
+"AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ",
+"AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ"
+]
+
+VIDEOS = [
+"BAACAgEAAxkBAAIDOWnWqNs-1FpAl43ilynlUwZ0g6g8AAJICAAC9KC4Rh5FmcPCMztcOwQ"
+]
 
 # =============================
 # PLANOS
@@ -63,6 +74,7 @@ def criar_pagamento(user_id, plano):
             "external_reference": f"{user_id}|{plano}"
         }
     )
+
     return r.json().get("init_point")
 
 def criar_pix(user_id, plano):
@@ -100,8 +112,9 @@ def enviar_videos(chat_id):
                       json={"chat_id": chat_id, "video": v})
 
 def enviar_preview(chat_id):
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                  json={"chat_id": chat_id, "video": VIDEOS[0]})
+    if VIDEOS:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                      json={"chat_id": chat_id, "video": VIDEOS[0]})
 
 # =============================
 # FUNIL
@@ -136,7 +149,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_id not in usuarios_funil:
         usuarios_funil.add(user_id)
-        asyncio.create_task(funil(user_id))
+        loop.create_task(funil(user_id))
 
     keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
 
@@ -176,7 +189,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # =============================
-# LIBERAR (ADMIN)
+# LIBERAR
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -188,7 +201,17 @@ async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ enviado")
 
 # =============================
-# MP WEBHOOK
+# WEBHOOK TELEGRAM (FIX)
+# =============================
+
+@app.route(f"/webhook/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    loop.run_until_complete(bot_app.process_update(update))
+    return "ok"
+
+# =============================
+# WEBHOOK MP
 # =============================
 
 @app.route("/mp", methods=["POST"])
@@ -207,14 +230,7 @@ def mp():
             user_id, plano = pagamento["external_reference"].split("|")
             user_id = int(user_id)
 
-            if plano == "isca":
-                enviar_fotos(user_id)
-                enviar_preview(user_id)
-
-            elif plano == "upgrade":
-                enviar_videos(user_id)
-
-            elif plano == "leve":
+            if plano == "leve":
                 enviar_fotos(user_id)
 
             elif plano == "pesado":
@@ -227,23 +243,24 @@ def mp():
     return "ok", 200
 
 # =============================
-# WEBHOOK TELEGRAM
+# ROOT
 # =============================
-
-@app.route(f"/webhook/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    asyncio.run(bot_app.initialize())
-    asyncio.run(bot_app.process_update(update))
-    return "ok"
 
 @app.route("/")
 def home():
     return "online"
 
+# =============================
+# HANDLERS
+# =============================
+
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CommandHandler("liberar", liberar))
 bot_app.add_handler(CallbackQueryHandler(botoes))
+
+# =============================
+# WEBHOOK SET
+# =============================
 
 def set_webhook():
     requests.get(
@@ -252,6 +269,10 @@ def set_webhook():
     )
 
 set_webhook()
+
+# =============================
+# RUN
+# =============================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
