@@ -5,6 +5,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import asyncio
 import requests
 import os
+import base64
 
 # =============================
 # CONFIG
@@ -24,7 +25,6 @@ asyncio.set_event_loop(loop)
 loop.run_until_complete(bot_app.initialize())
 
 usuarios_funil = set()
-usuarios_upsell = set()
 
 # =============================
 # MIDIAS
@@ -111,10 +111,18 @@ def enviar_videos(chat_id):
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                       json={"chat_id": chat_id, "video": v})
 
-def enviar_preview(chat_id):
-    if VIDEOS:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                      json={"chat_id": chat_id, "video": VIDEOS[0]})
+# =============================
+# REENGAJAMENTO PÓS-CLIQUE
+# =============================
+
+async def reengajar(user_id):
+    await asyncio.sleep(300)
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={
+            "chat_id": user_id,
+            "text": "😈 ainda tá pensando?\n\nnão vou deixar isso liberado por muito tempo..."
+        })
 
 # =============================
 # FUNIL
@@ -179,14 +187,35 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("escolhe 😈", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data in PLANOS:
+        loop.create_task(reengajar(user_id))
+
         pix = criar_pix(user_id, query.data)
         link = criar_pagamento(user_id, query.data)
 
-        pix_code = pix.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code", "erro")
+        pix_data = pix.get("point_of_interaction", {}).get("transaction_data", {})
+        pix_code = pix_data.get("qr_code")
+        pix_qr = pix_data.get("qr_code_base64")
 
-        await query.message.reply_text(
-            f"💳 PIX:\n\n{pix_code}\n\nou paga aqui 👇\n{link}"
+        if pix_qr:
+            qr_bytes = base64.b64decode(pix_qr)
+
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                files={"photo": ("pix.png", qr_bytes)},
+                data={"chat_id": user_id}
+            )
+
+        texto = (
+            "💎 ACESSO IMEDIATO\n\n"
+            "⏳ conteúdo limitado\n\n"
         )
+
+        if pix_code:
+            texto += f"💳 PIX copia e cola:\n\n{pix_code}\n\n"
+
+        texto += f"👇 pagar agora\n{link}"
+
+        await query.message.reply_text(texto)
 
 # =============================
 # LIBERAR
@@ -201,12 +230,13 @@ async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ enviado")
 
 # =============================
-# WEBHOOK TELEGRAM (FIX)
+# WEBHOOK TELEGRAM
 # =============================
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    data = request.get_json(force=True)
+    update = Update.de_json(data, bot_app.bot)
     loop.run_until_complete(bot_app.process_update(update))
     return "ok"
 
@@ -232,10 +262,8 @@ def mp():
 
             if plano == "leve":
                 enviar_fotos(user_id)
-
             elif plano == "pesado":
                 enviar_videos(user_id)
-
             else:
                 enviar_fotos(user_id)
                 enviar_videos(user_id)
@@ -259,7 +287,7 @@ bot_app.add_handler(CommandHandler("liberar", liberar))
 bot_app.add_handler(CallbackQueryHandler(botoes))
 
 # =============================
-# WEBHOOK SET
+# WEBHOOK
 # =============================
 
 def set_webhook():
