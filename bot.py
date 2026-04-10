@@ -27,18 +27,24 @@ loop.run_until_complete(bot_app.initialize())
 usuarios_funil = set()
 
 # =============================
-# MIDIAS
+# MIDIAS (RESTAURADAS)
 # =============================
 
 FOTO_START = "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ"
 
 FOTOS = [
 "AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ"
+"AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ",
+"AgACAgEAAyEFAATanvxOAAMiadalWqyrO-DiYl9D6juKlr5epIYAAiYMaxtbAAG5Rhow-8sHdlnOAQADAgADeQADOwQ",
+"AgACAgEAAyEFAATanvxOAAMjadalWufKeZ_A5IqW1lU9BiCmPjEAAigMaxtbAAG5Rh_43jcPh2SPAQADAgADeQADOwQ",
+"AgACAgEAAyEFAATanvxOAAMkadalWvazoCPw5Wl8X-8IJgF9cR8AAioMaxtbAAG5RiaHphVTp9iZAQADAgADeQADOwQ",
+"AgACAgEAAyEFAATanvxOAAMladalWhXgdDnrD-tUwoTyInpEKMIAAikMaxtbAAG5RgV6iGNg7W5PAQADAgADeQADOwQ"
 ]
 
 VIDEOS = [
-"BAACAgEAAxkBAAIDOWnWqNs-1FpAl43ilynlUwZ0g6g8AAJICAAC9KC4Rh5FmcPCMztcOwQ"
+"BAACAgEAAxkBAAIDOWnWqNs-1FpAl43ilynlUwZ0g6g8AAJICAAC9KC4Rh5FmcPCMztcOwQ",
+"BAACAgEAAxkBAAIDOmnWqNv51sHmOSI4skR7Leg_niGDAAJACAAC9KC4RoWPxz3SVNSNOwQ",
+"BAACAgEAAxkBAAIDO2nWqNujS8IkK5L9bnaBzeNpQqjfAAJGCAAC9KC4RhGwOQG7fi2xOwQ"
 ]
 
 # =============================
@@ -74,13 +80,12 @@ def criar_pagamento(user_id, plano):
             "external_reference": f"{user_id}|{plano}"
         }
     )
-
     return r.json().get("init_point")
 
 def criar_pix(user_id, plano):
     plano_info = PLANOS[plano]
 
-    r = requests.post(
+    return requests.post(
         "https://api.mercadopago.com/v1/payments",
         headers={
             "Authorization": f"Bearer {MP_ACCESS_TOKEN}",
@@ -94,8 +99,6 @@ def criar_pix(user_id, plano):
             "external_reference": f"{user_id}|{plano}"
         }
     ).json()
-
-    return r
 
 # =============================
 # MIDIAS
@@ -112,20 +115,7 @@ def enviar_videos(chat_id):
                       json={"chat_id": chat_id, "video": v})
 
 # =============================
-# REENGAJAMENTO PÓS-CLIQUE
-# =============================
-
-async def reengajar(user_id):
-    await asyncio.sleep(300)
-
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text": "😈 ainda tá pensando?\n\nnão vou deixar isso liberado por muito tempo..."
-        })
-
-# =============================
-# FUNIL
+# FUNIL + ISCA
 # =============================
 
 async def funil(user_id):
@@ -138,7 +128,6 @@ async def funil(user_id):
         json={"chat_id": user_id, "text": "tem coisa ali que eu não mostro sempre 👀"})
 
     await asyncio.sleep(1200)
-
     link = criar_pagamento(user_id, "isca")
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
@@ -147,6 +136,15 @@ async def funil(user_id):
             "text": "última chance 😈\n\nte libero por R$4,50 👇",
             "reply_markup": {"inline_keyboard": [[{"text": "🔥 ENTRAR", "url": link}]]}
         })
+
+# =============================
+# REENGAJAMENTO
+# =============================
+
+async def reengajar(user_id):
+    await asyncio.sleep(300)
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id, "text": "😈 ainda tá pensando?"})
 
 # =============================
 # START
@@ -198,27 +196,23 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if pix_qr:
             qr_bytes = base64.b64decode(pix_qr)
-
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
                 files={"photo": ("pix.png", qr_bytes)},
                 data={"chat_id": user_id}
             )
 
-        texto = (
-            "💎 ACESSO IMEDIATO\n\n"
-            "⏳ conteúdo limitado\n\n"
-        )
+        texto = "💎 ACESSO IMEDIATO\n\n⏳ conteúdo limitado\n\n"
 
         if pix_code:
-            texto += f"💳 PIX copia e cola:\n\n{pix_code}\n\n"
+            texto += f"💳 PIX:\n{pix_code}\n\n"
 
         texto += f"👇 pagar agora\n{link}"
 
         await query.message.reply_text(texto)
 
 # =============================
-# LIBERAR
+# LIBERAR (TESTE)
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -235,8 +229,7 @@ async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
 def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, bot_app.bot)
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
     loop.run_until_complete(bot_app.process_update(update))
     return "ok"
 
