@@ -26,6 +26,7 @@ asyncio.set_event_loop(loop)
 loop.run_until_complete(bot_app.initialize())
 
 usuarios_funil = set()
+pagamentos_processados = set()  # 🔒 anti-duplicação
 
 # =============================
 # MIDIAS
@@ -113,7 +114,7 @@ def criar_pix(user_id, plano):
     ).json()
 
 # =============================
-# ENVIO MIDIAS (CORRIGIDO)
+# ENVIO MIDIAS (ANTI BUG)
 # =============================
 
 def enviar_fotos(chat_id):
@@ -145,7 +146,7 @@ def enviar_videos(chat_id):
         time.sleep(1.2)
 
 # =============================
-# FUNIL (ISCA)
+# FUNIL
 # =============================
 
 async def funil(user_id):
@@ -169,16 +170,6 @@ async def funil(user_id):
             "text": "última chance 😈\n\nte libero por R$4,50 👇",
             "reply_markup": {"inline_keyboard": [[{"text": "🔥 ENTRAR", "url": link}]]}
         })
-
-# =============================
-# REENGAJAMENTO
-# =============================
-
-async def reengajar(user_id):
-    await asyncio.sleep(300)
-
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": user_id, "text": "😈 ainda tá pensando?"})
 
 # =============================
 # START
@@ -219,8 +210,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("escolhe 😈", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data in PLANOS:
-        loop.create_task(reengajar(user_id))
-
         pix = criar_pix(user_id, query.data)
         link = criar_pagamento(user_id, query.data)
 
@@ -246,7 +235,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(texto)
 
 # =============================
-# LIBERAR (TESTE)
+# LIBERAR
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -269,7 +258,7 @@ def webhook():
     return "ok"
 
 # =============================
-# WEBHOOK MP
+# WEBHOOK MP (CORRIGIDO)
 # =============================
 
 @app.route("/mp", methods=["POST"])
@@ -279,12 +268,17 @@ def mp():
     if data.get("type") == "payment":
         payment_id = data["data"]["id"]
 
+        if payment_id in pagamentos_processados:
+            return "ok", 200
+
         pagamento = requests.get(
             f"https://api.mercadopago.com/v1/payments/{payment_id}",
             headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
         ).json()
 
         if pagamento["status"] == "approved":
+            pagamentos_processados.add(payment_id)
+
             user_id, plano = pagamento["external_reference"].split("|")
             user_id = int(user_id)
 
