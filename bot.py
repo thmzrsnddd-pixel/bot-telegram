@@ -6,6 +6,7 @@ import asyncio
 import requests
 import os
 import base64
+import time
 
 # =============================
 # CONFIG
@@ -27,24 +28,17 @@ loop.run_until_complete(bot_app.initialize())
 usuarios_funil = set()
 
 # =============================
-# MIDIAS (RESTAURADAS)
+# MIDIAS (COLE SUAS 25 AQUI)
 # =============================
 
 FOTO_START = "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ"
 
 FOTOS = [
-"AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMiadalWqyrO-DiYl9D6juKlr5epIYAAiYMaxtbAAG5Rhow-8sHdlnOAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMjadalWufKeZ_A5IqW1lU9BiCmPjEAAigMaxtbAAG5Rh_43jcPh2SPAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMkadalWvazoCPw5Wl8X-8IJgF9cR8AAioMaxtbAAG5RiaHphVTp9iZAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMladalWhXgdDnrD-tUwoTyInpEKMIAAikMaxtbAAG5RgV6iGNg7W5PAQADAgADeQADOwQ"
+# 👉 COLE TODAS SUAS 25 AQUI
 ]
 
 VIDEOS = [
-"BAACAgEAAxkBAAIDOWnWqNs-1FpAl43ilynlUwZ0g6g8AAJICAAC9KC4Rh5FmcPCMztcOwQ",
-"BAACAgEAAxkBAAIDOmnWqNv51sHmOSI4skR7Leg_niGDAAJACAAC9KC4RoWPxz3SVNSNOwQ",
-"BAACAgEAAxkBAAIDO2nWqNujS8IkK5L9bnaBzeNpQqjfAAJGCAAC9KC4RhGwOQG7fi2xOwQ"
+# 👉 TODOS OS VÍDEOS
 ]
 
 # =============================
@@ -101,33 +95,54 @@ def criar_pix(user_id, plano):
     ).json()
 
 # =============================
-# MIDIAS
+# ENVIO SEGURO DE MIDIAS
 # =============================
 
 def enviar_fotos(chat_id):
-    for f in FOTOS:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                      json={"chat_id": chat_id, "photo": f})
+    for foto in FOTOS:
+        for tentativa in range(3):
+            try:
+                requests.post(
+                    f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                    json={"chat_id": chat_id, "photo": foto},
+                    timeout=10
+                )
+                break
+            except:
+                time.sleep(1)
+        time.sleep(0.8)
 
 def enviar_videos(chat_id):
-    for v in VIDEOS:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
-                      json={"chat_id": chat_id, "video": v})
+    for video in VIDEOS:
+        for tentativa in range(3):
+            try:
+                requests.post(
+                    f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                    json={"chat_id": chat_id, "video": video},
+                    timeout=10
+                )
+                break
+            except:
+                time.sleep(2)
+        time.sleep(1.2)
 
 # =============================
-# FUNIL + ISCA
+# FUNIL (ISCA)
 # =============================
 
 async def funil(user_id):
     await asyncio.sleep(120)
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": user_id, "text": "ei... saiu assim? 😏"})
 
     await asyncio.sleep(480)
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": user_id, "text": "tem coisa ali que eu não mostro sempre 👀"})
 
     await asyncio.sleep(1200)
+
     link = criar_pagamento(user_id, "isca")
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
@@ -143,6 +158,7 @@ async def funil(user_id):
 
 async def reengajar(user_id):
     await asyncio.sleep(300)
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": user_id, "text": "😈 ainda tá pensando?"})
 
@@ -212,7 +228,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(texto)
 
 # =============================
-# LIBERAR (TESTE)
+# LIBERAR
 # =============================
 
 async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -221,6 +237,7 @@ async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     enviar_fotos(ADMIN_ID)
     enviar_videos(ADMIN_ID)
+
     await update.message.reply_text("✅ enviado")
 
 # =============================
