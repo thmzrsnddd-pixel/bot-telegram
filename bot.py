@@ -5,7 +5,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import asyncio
 import requests
 import os
-import base64
 import time
 import json
 import threading
@@ -28,30 +27,29 @@ asyncio.set_event_loop(loop)
 loop.run_until_complete(bot_app.initialize())
 
 # =============================
-# ANTI DUPLICAÇÃO
+# ARQUIVOS
 # =============================
 
-ARQUIVO = "pagamentos.json"
+def carregar(nome):
+    if not os.path.exists(nome):
+        with open(nome, "w") as f:
+            json.dump([], f)
+    with open(nome, "r") as f:
+        return json.load(f)
 
-if not os.path.exists(ARQUIVO):
-    with open(ARQUIVO, "w") as f:
-        json.dump([], f)
-
-def ja_processado(pid):
-    with open(ARQUIVO, "r") as f:
-        return pid in json.load(f)
-
-def salvar(pid):
-    with open(ARQUIVO, "r") as f:
-        data = json.load(f)
-
-    data.append(pid)
-
-    with open(ARQUIVO, "w") as f:
+def salvar(nome, data):
+    with open(nome, "w") as f:
         json.dump(data, f)
 
 # =============================
-# MIDIAS (TODAS)
+# BANCO SIMPLES
+# =============================
+
+ARQ_PAG = "pagamentos.json"
+ARQ_VIP = "vip.json"
+
+# =============================
+# MIDIAS
 # =============================
 
 FOTOS = [
@@ -81,15 +79,29 @@ VIDEOS = [
 ]
 
 # =============================
-# ENVIO EM BACKGROUND
+# LIBERAR CONTEÚDO
 # =============================
 
 def liberar_conteudo(user_id, plano):
+    vip = carregar(ARQ_VIP)
+
+    if user_id not in vip:
+        vip.append(user_id)
+        salvar(ARQ_VIP, vip)
+
     if plano == "leve":
         for f in FOTOS:
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                          json={"chat_id": user_id, "photo": f})
+                          json={"chat_id": user_id, "photo": f,
+                                "caption": "🔒 conteúdo protegido"})
             time.sleep(1)
+
+        # 🔥 UPSELL
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            json={
+                "chat_id": user_id,
+                "text": "quer ver mais pesado? 😈\n\nlibero por só R$4,99",
+            })
 
     elif plano == "pesado":
         for v in VIDEOS:
@@ -109,7 +121,7 @@ def liberar_conteudo(user_id, plano):
             time.sleep(1.5)
 
 # =============================
-# WEBHOOK MP (CORRETO)
+# WEBHOOK MP
 # =============================
 
 @app.route("/mp", methods=["POST"])
@@ -117,34 +129,92 @@ def mp():
     data = request.get_json()
 
     if data.get("type") == "payment":
-        payment_id = str(data["data"]["id"])
+        pid = str(data["data"]["id"])
+        pagos = carregar(ARQ_PAG)
 
-        if ja_processado(payment_id):
+        if pid in pagos:
             return "ok", 200
 
-        salvar(payment_id)
+        pagos.append(pid)
+        salvar(ARQ_PAG, pagos)
 
         pagamento = requests.get(
-            f"https://api.mercadopago.com/v1/payments/{payment_id}",
+            f"https://api.mercadopago.com/v1/payments/{pid}",
             headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
         ).json()
 
         if pagamento.get("status") == "approved":
             user_id, plano = pagamento["external_reference"].split("|")
-            user_id = int(user_id)
-
-            # 🚀 roda em background
-            threading.Thread(target=liberar_conteudo, args=(user_id, plano)).start()
+            threading.Thread(target=liberar_conteudo,
+                             args=(int(user_id), plano)).start()
 
     return "ok", 200
 
 # =============================
-# RESTO
+# START
+# =============================
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [[InlineKeyboardButton("😈 entrar", callback_data="vip")]]
+
+    await update.message.reply_text("entra 😈", reply_markup=InlineKeyboardMarkup(keyboard))
+
+# =============================
+# BOTÕES
+# =============================
+
+async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = [
+        [InlineKeyboardButton("😈 LEVE", callback_data="leve")],
+        [InlineKeyboardButton("🔥 PESADO", callback_data="pesado")],
+        [InlineKeyboardButton("💀 PESADÍSSIMO", callback_data="pesadissimo")],
+    ]
+
+    await query.message.reply_text("escolhe 😈", reply_markup=InlineKeyboardMarkup(keyboard))
+
+# =============================
+# LIBERAR ADMIN
+# =============================
+
+async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    liberar_conteudo(ADMIN_ID, "pesadissimo")
+    await update.message.reply_text("ok")
+
+# =============================
+# WEBHOOK TELEGRAM
+# =============================
+
+@app.route(f"/webhook/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    loop.run_until_complete(bot_app.process_update(update))
+    return "ok"
+
+# =============================
+# ROOT
 # =============================
 
 @app.route("/")
 def home():
     return "online"
+
+# =============================
+# HANDLERS
+# =============================
+
+bot_app.add_handler(CommandHandler("start", start))
+bot_app.add_handler(CommandHandler("liberar", liberar))
+bot_app.add_handler(CallbackQueryHandler(botoes))
+
+# =============================
+# SET WEBHOOK
+# =============================
 
 def set_webhook():
     requests.get(
@@ -153,6 +223,10 @@ def set_webhook():
     )
 
 set_webhook()
+
+# =============================
+# RUN
+# =============================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
