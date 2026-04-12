@@ -41,7 +41,7 @@ def registrar(user_id):
         usuarios[user_id] = {"clicou": None, "comprou": False}
 
 # =============================
-# MIDIAS (25)
+# MIDIAS
 # =============================
 
 FOTOS_LEVE = [
@@ -80,10 +80,6 @@ VIDEOS_COMPLETO = [
 "BAACAgEAAxkBAAIDRmnWqNvIk0GV0051QxjuXQjTDVLIAAJBCAAC9KC4RiJEk_m4MDL3OwQ"
 ]
 
-# =============================
-# PLANOS
-# =============================
-
 PLANOS = {
     "leve": 5.00,
     "pesado": 8.99,
@@ -106,6 +102,27 @@ def criar_pagamento(user_id, plano, extra=0):
         }
     )
     return r.json().get("init_point")
+
+# =============================
+# REMARKETING
+# =============================
+
+async def remarketing(user_id):
+    await asyncio.sleep(120)
+
+    plano = usuarios.get(user_id, {}).get("clicou")
+    if not plano:
+        return
+
+    link = criar_pagamento(user_id, plano)
+
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={
+            "chat_id": user_id,
+            "text": f"👀 ei...\n\nvocê quase liberou o {plano} 😈\n\n👉 {link}"
+        }
+    )
 
 # =============================
 # START
@@ -135,8 +152,6 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "vip":
 
-        asyncio.create_task(remarketing(user_id))
-
         keyboard = [
             [InlineKeyboardButton("😈 Só olhar...", callback_data="leve")],
             [InlineKeyboardButton("🔥 Quero mais", callback_data="pesado")],
@@ -152,6 +167,8 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data in PLANOS:
 
         usuarios[user_id]["clicou"] = query.data
+
+        asyncio.create_task(remarketing(user_id))
 
         await query.message.reply_text("👀 segura...")
 
@@ -170,13 +187,20 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # =============================
-# ENTREGA
+# ENTREGA + UPSELL
 # =============================
 
 def enviar_leve(chat_id):
     for f in FOTOS_LEVE:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": f})
         time.sleep(1)
+
+    link = criar_pagamento(chat_id, "pesado", 3.99)
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": chat_id,
+              "text": "😳 isso foi leve...\n\nvocê não aguentaria o resto 😈",
+              "reply_markup": {"inline_keyboard": [[{"text": "🔥 subir nível (+3,99)", "url": link}]]}})
 
 def enviar_pesado(chat_id):
     enviar_leve(chat_id)
@@ -189,12 +213,26 @@ def enviar_pesado(chat_id):
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": v})
         time.sleep(1)
 
+    link = criar_pagamento(chat_id, "pesadissimo", 3.99)
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": chat_id,
+              "text": "🔥 agora ficou sério...",
+              "reply_markup": {"inline_keyboard": [[{"text": "👑 liberar máximo (+3,99)", "url": link}]]}})
+
 def enviar_pesadissimo(chat_id):
     enviar_pesado(chat_id)
 
     for v in VIDEOS_PESADISSIMO:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": v})
         time.sleep(1)
+
+    link = criar_pagamento(chat_id, "completo", 3.99)
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": chat_id,
+              "text": "👑 agora você chegou perto...",
+              "reply_markup": {"inline_keyboard": [[{"text": "💎 liberar tudo (+3,99)", "url": link}]]}})
 
 def enviar_completo(chat_id):
     enviar_pesadissimo(chat_id)
@@ -205,22 +243,6 @@ def enviar_completo(chat_id):
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id, "text": "💎 acesso total liberado 😈"})
-
-# =============================
-# REMARKETING
-# =============================
-
-async def remarketing(user_id):
-    await asyncio.sleep(120)
-
-    plano = usuarios.get(user_id, {}).get("clicou")
-    if not plano:
-        return
-
-    link = criar_pagamento(user_id, plano)
-
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": user_id, "text": f"👀 ainda pensando no {plano}? 😈\n👉 {link}"})
 
 # =============================
 # LIBERAR (ADMIN)
