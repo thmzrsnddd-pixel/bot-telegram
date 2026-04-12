@@ -10,7 +10,6 @@ from telegram.ext import (
 import asyncio
 import requests
 import os
-import time
 
 # =============================
 # CONFIG
@@ -25,7 +24,7 @@ app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 # =============================
-# MIDIAS (SEPARADAS)
+# MIDIAS
 # =============================
 
 FOTO_START = "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ"
@@ -44,22 +43,22 @@ VIDEOS_PESADO = [
 TODOS = FOTOS_LEVE + VIDEOS_PESADO
 
 # =============================
-# PLANOS (MELHORADOS)
+# PLANOS
 # =============================
 
 PLANOS = {
     "leve": {"preco": 5.00},
     "pesado": {"preco": 8.99},
     "pesadissimo": {"preco": 12.99},
-    "completo": {"preco": 15.99}  # agora mais caro de propósito
+    "completo": {"preco": 15.99}
 }
 
 # =============================
 # PAGAMENTO
 # =============================
 
-def criar_pagamento(user_id, plano):
-    preco = PLANOS[plano]["preco"]
+def criar_pagamento(user_id, plano, valor_extra=0):
+    preco = PLANOS[plano]["preco"] + valor_extra
 
     r = requests.post(
         "https://api.mercadopago.com/checkout/preferences",
@@ -78,7 +77,7 @@ def criar_pagamento(user_id, plano):
     return r.json().get("init_point")
 
 # =============================
-# START (MELHORADO)
+# START
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -86,12 +85,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_photo(
         photo=FOTO_START,
-        caption="oii... 🤭\n\nnão era pra você estar aqui...\n\nmas já que entrou... clica aí 😈",
+        caption="oii... 🤭\n\nnão era pra você estar aqui...\n\nmas já que entrou...",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 # =============================
-# BOTÕES (MELHORADOS)
+# BOTÕES
 # =============================
 
 async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -99,9 +98,9 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user_id = query.from_user.id
 
-    if query.data == "vip":
+    asyncio.create_task(remarketing_sequence(user_id))
 
-        asyncio.create_task(remarketing(user_id))
+    if query.data == "vip":
 
         keyboard = [
             [InlineKeyboardButton("😈 curiosidade", callback_data="leve")],
@@ -111,7 +110,7 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
 
         await query.message.reply_text(
-            "até onde você aguenta ir...? 😈",
+            "até onde você aguenta...? 😈",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
@@ -119,12 +118,15 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         link = criar_pagamento(user_id, query.data)
 
+        keyboard = [[InlineKeyboardButton("😈 desbloquear", url=link)]]
+
         await query.message.reply_text(
-            f"😈 desbloqueio imediato:\n\n👉 {link}\n\n(não mostra pra ninguém 🤫)"
+            "última chance de sair...",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
 # =============================
-# ENTREGA
+# ENTREGA + UPSELL
 # =============================
 
 def enviar_leve(chat_id):
@@ -132,18 +134,28 @@ def enviar_leve(chat_id):
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
                       json={"chat_id": chat_id, "photo": foto})
 
+    link = criar_pagamento(chat_id, "pesado", 3.99)
+
+    keyboard = [[{"text": "🔥 liberar pesado (+3,99)", "url": link}]]
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id,
-              "text": "😳 isso foi só o começo...\n\nquer ver o que eu escondo? 😈"})
+              "text": "😳 isso foi leve...",
+              "reply_markup": {"inline_keyboard": keyboard}})
 
 def enviar_pesado(chat_id):
     for video in VIDEOS_PESADO:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                       json={"chat_id": chat_id, "video": video})
 
+    link = criar_pagamento(chat_id, "pesadissimo", 3.99)
+
+    keyboard = [[{"text": "👑 liberar máximo (+3,99)", "url": link}]]
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id,
-              "text": "😈 agora ficou sério...\n\nmas ainda não é tudo..."})
+              "text": "😈 agora ficou sério...",
+              "reply_markup": {"inline_keyboard": keyboard}})
 
 def enviar_pesadissimo(chat_id):
     for midia in TODOS:
@@ -154,16 +166,21 @@ def enviar_pesadissimo(chat_id):
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
                           json={"chat_id": chat_id, "video": midia})
 
+    link = criar_pagamento(chat_id, "completo", 3.00)
+
+    keyboard = [[{"text": "💎 liberar tudo (+3,00)", "url": link}]]
+
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id,
-              "text": "👑 agora você viu tudo...\n\nou quase 😏"})
+              "text": "👑 quase tudo...",
+              "reply_markup": {"inline_keyboard": keyboard}})
 
 def enviar_completo(chat_id):
     enviar_pesadissimo(chat_id)
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": chat_id,
-              "text": "💎 bônus secreto liberado...\n\nsó quem pega esse nível vê 😈"})
+              "text": "💎 acesso total liberado"})
 
 # =============================
 # LIBERAR (ADMIN)
@@ -181,31 +198,38 @@ async def liberar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if plano == "leve":
         enviar_leve(update.message.chat_id)
-
     elif plano == "pesado":
         enviar_pesado(update.message.chat_id)
-
     elif plano == "pesadissimo":
         enviar_pesadissimo(update.message.chat_id)
-
     elif plano == "completo":
         enviar_completo(update.message.chat_id)
 
 # =============================
-# REMARKETING (MELHORADO)
+# REMARKETING SEQUÊNCIA
 # =============================
 
-async def remarketing(user_id):
+async def remarketing_sequence(user_id):
+
     await asyncio.sleep(120)
 
     link = criar_pagamento(user_id, "leve")
+    keyboard = [[{"text": "😈 voltar", "url": link}]]
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text": f"😳 ei...\n\nvocê saiu rápido demais...\n\nvou te mostrar só um pouco...\n\n👉 {link}"
-        }
-    )
+        json={"chat_id": user_id,
+              "text": "😳 sumiu...",
+              "reply_markup": {"inline_keyboard": keyboard}})
+
+    await asyncio.sleep(180)
+
+    link = criar_pagamento(user_id, "leve")
+    keyboard = [[{"text": "🔥 última chance", "url": link}]]
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id,
+              "text": "não vou mandar de novo...",
+              "reply_markup": {"inline_keyboard": keyboard}})
 
 # =============================
 # WEBHOOK MP
@@ -229,13 +253,10 @@ def mp():
 
             if plano == "leve":
                 enviar_leve(user_id)
-
             elif plano == "pesado":
                 enviar_pesado(user_id)
-
             elif plano == "pesadissimo":
                 enviar_pesadissimo(user_id)
-
             elif plano == "completo":
                 enviar_completo(user_id)
 
