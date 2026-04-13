@@ -5,6 +5,7 @@ import asyncio
 import requests
 import os
 import time
+import random
 
 # =============================
 # CONFIG
@@ -15,30 +16,23 @@ PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 ADMIN_ID = 8584498503
 
-# ⚠️ ESSA LINHA É O QUE RESOLVE SEU ERRO
 app = Flask(__name__)
-
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 # =============================
-# WEBHOOK
-# =============================
-
-def set_webhook():
-    requests.get(
-        f"https://api.telegram.org/bot{TOKEN}/setWebhook",
-        params={"url": f"{PUBLIC_URL}/webhook/{TOKEN}"}
-    )
-
-# =============================
-# BANCO
+# BANCO INTELIGENTE
 # =============================
 
 usuarios = {}
 
 def registrar(user_id):
     if user_id not in usuarios:
-        usuarios[user_id] = {"clicou": None}
+        usuarios[user_id] = {
+            "clicou": None,
+            "comprou": False,
+            "tentativas": 0,
+            "ultimo_clique": time.time()
+        }
 
 # =============================
 # MIDIAS (mantidas)
@@ -46,9 +40,7 @@ def registrar(user_id):
 
 FOTOS_LEVE = [
 "AgACAgEAAyEFAATanvxOAAMfadalWki1wP7-1YvoJzGG9b_SDb4AAiQMaxtbAAG5Rm_IZa1EkJk2AQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMhadalWk1MTJUd0pkxCyGvSG3_UfYAAiUMaxtbAAG5RkRVtVGrJj0DAQADAgADeQADOwQ",
-"AgACAgEAAyEFAATanvxOAAMiadalWqyrO-DiYl9D6juKlr5epIYAAiYMaxtbAAG5Rhow-8sHdlnOAQADAgADeQADOwQ"
+"AgACAgEAAyEFAATanvxOAAMgadalWpQu9iHfYUWKgZ7DtzZRqI8AAicMaxtbAAG5RiyZJaeK4ptQAQADAgADeQADOwQ"
 ]
 
 VIDEOS_PESADO = [
@@ -71,7 +63,29 @@ PLANOS = {
     "completo": 15.99
 }
 
+# =============================
+# PREÇO DINÂMICO
+# =============================
+
+def preco_dinamico(user_id, plano):
+    base = PLANOS[plano]
+    tentativas = usuarios[user_id]["tentativas"]
+
+    if tentativas >= 3:
+        return base - 1.00  # desconto para converter
+
+    if tentativas == 0:
+        return base + 1.00  # preço mais alto primeiro
+
+    return base
+
+# =============================
+# PAGAMENTO
+# =============================
+
 def criar_pagamento(user_id, plano, extra=0):
+    preco = preco_dinamico(user_id, plano) + extra
+
     r = requests.post(
         "https://api.mercadopago.com/checkout/preferences",
         headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"},
@@ -80,7 +94,7 @@ def criar_pagamento(user_id, plano, extra=0):
                 "title": plano,
                 "quantity": 1,
                 "currency_id": "BRL",
-                "unit_price": PLANOS[plano] + extra
+                "unit_price": preco
             }],
             "external_reference": f"{user_id}|{plano}"
         }
@@ -88,25 +102,36 @@ def criar_pagamento(user_id, plano, extra=0):
     return r.json().get("init_point")
 
 # =============================
-# REMARKETING
+# SIMULA HUMANO
+# =============================
+
+def digitando(chat_id):
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendChatAction",
+                  json={"chat_id": chat_id, "action": "typing"})
+    time.sleep(random.uniform(1.5, 3.0))
+
+# =============================
+# REMARKETING BLACK
 # =============================
 
 async def remarketing(user_id):
     await asyncio.sleep(120)
 
-    plano = usuarios.get(user_id, {}).get("clicou")
-    if not plano:
+    if usuarios[user_id]["comprou"]:
         return
 
+    plano = usuarios[user_id]["clicou"]
     link = criar_pagamento(user_id, plano)
 
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={
-            "chat_id": user_id,
-            "text": f"👀 você esqueceu isso aqui...\n👉 {link}"
-        }
-    )
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id,
+              "text": "👀 eu vi você olhando..."})
+
+    await asyncio.sleep(5)
+
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": user_id,
+              "text": f"😈 não vai entrar?\n👉 {link}"})
 
 # =============================
 # START
@@ -116,10 +141,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     registrar(user_id)
 
-    keyboard = [[InlineKeyboardButton("😈 Entrar", callback_data="vip")]]
+    digitando(user_id)
+
+    await update.message.reply_text("😳 espera...")
+
+    for f in FOTOS_LEVE:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                      json={"chat_id": user_id, "photo": f})
+        time.sleep(1)
+
+    keyboard = [[InlineKeyboardButton("😈 quero mais", callback_data="vip")]]
 
     await update.message.reply_text(
-        "👀 entra aí...",
+        "😏 isso foi só uma amostra...",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -143,51 +177,87 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💎 completo", callback_data="completo")]
         ]
 
-        await query.message.reply_text(
-            "😏 escolhe...",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        await query.message.reply_text("😈 escolhe...", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data in PLANOS:
 
         usuarios[user_id]["clicou"] = query.data
+        usuarios[user_id]["tentativas"] += 1
+
         asyncio.create_task(remarketing(user_id))
 
         link = criar_pagamento(user_id, query.data)
 
-        keyboard = [[InlineKeyboardButton("😈 desbloquear", url=link)]]
+        keyboard = [[InlineKeyboardButton("🔥 entrar agora", url=link)]]
 
         await query.message.reply_text(
-            "😳 quer ver?",
+            "⏳ acesso quase acabando...\n🔥 muita gente entrou hoje",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
 # =============================
-# ENTREGA (CORRIGIDO)
+# ENTREGA
 # =============================
 
 def enviar_leve(chat_id):
     for f in FOTOS_LEVE:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": f})
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                      json={"chat_id": chat_id, "photo": f})
 
-    link = criar_pagamento(chat_id, "pesado", 3.99)
+def enviar_pesado(chat_id):
+    for v in VIDEOS_PESADO:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                      json={"chat_id": chat_id, "video": v})
 
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "😈 quer mais?",
-              "reply_markup": {"inline_keyboard": [[{"text": "🔥 subir nível", "url": link}]]}})
+def enviar_pesadissimo(chat_id):
+    for v in VIDEOS_PESADISSIMO:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                      json={"chat_id": chat_id, "video": v})
 
 def enviar_completo(chat_id):
     for f in FOTOS_LEVE:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", json={"chat_id": chat_id, "photo": f})
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                      json={"chat_id": chat_id, "photo": f})
 
     for v in VIDEOS_PESADO + VIDEOS_PESADISSIMO + VIDEOS_COMPLETO:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo", json={"chat_id": chat_id, "video": v})
-
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": chat_id, "text": "💎 tudo liberado"})
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendVideo",
+                      json={"chat_id": chat_id, "video": v})
 
 # =============================
-# WEBHOOK TELEGRAM
+# WEBHOOK MP
+# =============================
+
+@app.route("/mp", methods=["POST"])
+def mp():
+    data = request.get_json()
+
+    if data.get("type") == "payment":
+        payment_id = data["data"]["id"]
+
+        pagamento = requests.get(
+            f"https://api.mercadopago.com/v1/payments/{payment_id}",
+            headers={"Authorization": f"Bearer {MP_ACCESS_TOKEN}"}
+        ).json()
+
+        if pagamento["status"] == "approved":
+            user_id, plano = pagamento["external_reference"].split("|")
+            user_id = int(user_id)
+
+            usuarios[user_id]["comprou"] = True
+
+            if plano == "leve":
+                enviar_leve(user_id)
+            elif plano == "pesado":
+                enviar_pesado(user_id)
+            elif plano == "pesadissimo":
+                enviar_pesadissimo(user_id)
+            elif plano == "completo":
+                enviar_completo(user_id)
+
+    return "ok", 200
+
+# =============================
+# TELEGRAM WEBHOOK
 # =============================
 
 @app.route(f"/webhook/{TOKEN}", methods=["POST"])
@@ -217,6 +287,5 @@ bot_app.add_handler(CallbackQueryHandler(botoes))
 # =============================
 
 if __name__ == "__main__":
-    set_webhook()
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
