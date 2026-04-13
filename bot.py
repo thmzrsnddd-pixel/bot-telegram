@@ -20,7 +20,7 @@ app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
 # =============================
-# BANCO INTELIGENTE
+# BANCO
 # =============================
 
 usuarios = {}
@@ -30,12 +30,11 @@ def registrar(user_id):
         usuarios[user_id] = {
             "clicou": None,
             "comprou": False,
-            "tentativas": 0,
-            "ultimo_clique": time.time()
+            "tentativas": 0
         }
 
 # =============================
-# MIDIAS (mantidas)
+# MIDIAS (MANTIDAS)
 # =============================
 
 FOTOS_LEVE = [
@@ -72,10 +71,9 @@ def preco_dinamico(user_id, plano):
     tentativas = usuarios[user_id]["tentativas"]
 
     if tentativas >= 3:
-        return base - 1.00  # desconto para converter
-
+        return base - 1.00
     if tentativas == 0:
-        return base + 1.00  # preço mais alto primeiro
+        return base + 1.00
 
     return base
 
@@ -102,16 +100,7 @@ def criar_pagamento(user_id, plano, extra=0):
     return r.json().get("init_point")
 
 # =============================
-# SIMULA HUMANO
-# =============================
-
-def digitando(chat_id):
-    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendChatAction",
-                  json={"chat_id": chat_id, "action": "typing"})
-    time.sleep(random.uniform(1.5, 3.0))
-
-# =============================
-# REMARKETING BLACK
+# REMARKETING
 # =============================
 
 async def remarketing(user_id):
@@ -125,7 +114,7 @@ async def remarketing(user_id):
 
     requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
         json={"chat_id": user_id,
-              "text": "👀 eu vi você olhando..."})
+              "text": "👀 você sumiu..."})
 
     await asyncio.sleep(5)
 
@@ -134,26 +123,40 @@ async def remarketing(user_id):
               "text": f"😈 não vai entrar?\n👉 {link}"})
 
 # =============================
-# START
+# START (🔥 NOVA ABERTURA)
 # =============================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     registrar(user_id)
 
-    digitando(user_id)
-
-    await update.message.reply_text("😳 espera...")
-
-    for f in FOTOS_LEVE:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                      json={"chat_id": user_id, "photo": f})
-        time.sleep(1)
-
-    keyboard = [[InlineKeyboardButton("😈 quero mais", callback_data="vip")]]
+    # simula humano
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendChatAction",
+                  json={"chat_id": user_id, "action": "typing"})
+    time.sleep(2)
 
     await update.message.reply_text(
-        "😏 isso foi só uma amostra...",
+        "👀 ei...\n\nnão sei se devia te responder aqui..."
+    )
+
+    time.sleep(2)
+
+    await update.message.reply_text(
+        "😳 você chegou meio rápido...\n\nnormalmente não mostro isso assim"
+    )
+
+    time.sleep(2)
+
+    # envia 1 mídia (isca)
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                  json={"chat_id": user_id, "photo": FOTOS_LEVE[0]})
+
+    time.sleep(2)
+
+    keyboard = [[InlineKeyboardButton("😈 quero ver mais", callback_data="vip")]]
+
+    await update.message.reply_text(
+        "😏 isso foi só um pedacinho...\n\nmas cuidado com o que você clica agora...",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -177,7 +180,10 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💎 completo", callback_data="completo")]
         ]
 
-        await query.message.reply_text("😈 escolhe...", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.reply_text(
+            "😈 escolhe seu nível...",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
     elif query.data in PLANOS:
 
@@ -188,10 +194,10 @@ async def botoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         link = criar_pagamento(user_id, query.data)
 
-        keyboard = [[InlineKeyboardButton("🔥 entrar agora", url=link)]]
+        keyboard = [[InlineKeyboardButton("🔥 desbloquear agora", url=link)]]
 
         await query.message.reply_text(
-            "⏳ acesso quase acabando...\n🔥 muita gente entrou hoje",
+            "⏳ acesso limitado...\n🔥 muita gente entrou hoje",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
