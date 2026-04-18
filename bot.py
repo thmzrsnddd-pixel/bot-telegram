@@ -11,7 +11,7 @@ import random
 # CONFIG
 # =============================
 
-TOKEN = "8705199333:AAGURCHtpVxni0b25b_QgsjQAQlxMjPuby0"
+TOKEN = 
 PUBLIC_URL = "https://bot-telegram-jdwg.onrender.com"
 MP_ACCESS_TOKEN = "APP_USR-1181155738357521-040514-9f16dd5519b7511a3d63a61f64300b1f-2931893365"
 ADMIN_ID = 8584498503
